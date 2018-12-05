@@ -1,0 +1,11 @@
+string start_floor
+string destination_floor
+string start_area
+string destination_area
+string start_local_area
+string destination_local_area
+geometry_msgs/Point start_position
+string destination_task
+---
+Waypoint[] waypoints
+---
