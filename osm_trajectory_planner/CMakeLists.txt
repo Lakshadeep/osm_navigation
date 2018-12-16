@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.6)
 
-project(osm_low_level_planner)
+project(osm_trajectory_planner)
 
 
 
