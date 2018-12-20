@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+    <node name="map_server_node" pkg="osm_map_server" type="map_server_node.py" output="screen">
+        <param name="overpass_server_ip" value="127.0.0.1" />
+        <param name="overpass_server_port" value="8000" />
+        <param name="ref_latitude" value="50.7800401" />  
+        <param name="ref_longitude" value="7.18226" />
+    </node>  
+</launch>
