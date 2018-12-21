@@ -1,17 +1,18 @@
 from osm_map_msgs.msg import *
+from osm_map_msgs.srv import *
 import rospy
 import geometry_msgs.msg
 from osm_map_server.obl_to_ros_adapter import OBLToROSAdapter 
 
-class LoadMap(object):
+class GetMap(object):
 
     def __init__(self, osm_bridge, semantic_features_finder):
         self.osm_bridge = osm_bridge
         self.semantic_features_finder = semantic_features_finder
 
-    def load_geometric_map(self, req):
+    def get_geometric_map(self, req):
         ref = req.area_id or req.area_ref
-        res = LoadGeometricMapResult()
+        res = GetGeometricMapResponse()
         geom_map = GeometricMap()
 
         try:
@@ -28,9 +29,9 @@ class LoadMap(object):
             rospy.logerr(str(e))
             return None
 
-    def load_semantic_map(self, req):
+    def get_semantic_map(self, req):
         ref = req.area_id or req.area_ref
-        res = LoadSemanticMapResult()
+        res = GetSemanticMapResponse()
         semantic_map = SemanticMap()
 
         try:
