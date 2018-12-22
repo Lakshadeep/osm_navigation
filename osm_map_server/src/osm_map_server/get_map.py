@@ -14,7 +14,8 @@ class GetMap(object):
         ref = req.area_id or req.area_ref
         res = GetGeometricMapResponse()
         geom_map = GeometricMap()
-
+        geom_map.header.frame_id = "/map"
+        geom_map.header.stamp = rospy.get_rostime()
         try:
             area_obj = self.osm_bridge.get_area(ref)
             for wall in area_obj.walls or []:
@@ -33,7 +34,8 @@ class GetMap(object):
         ref = req.area_id or req.area_ref
         res = GetSemanticMapResponse()
         semantic_map = SemanticMap()
-
+        semantic_map.header.frame_id = "/map"
+        semantic_map.header.stamp = rospy.get_rostime()
         try:
             semantic_features = self.semantic_features_finder.get_features(ref)
             for wall_side in semantic_features.wall_sides or []:
