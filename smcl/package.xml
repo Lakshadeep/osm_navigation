@@ -1,0 +1,35 @@
+<package>
+    <name>smcl</name>
+    <version>0.1.0</version>
+    <description>
+        <p>
+            SMCL is a probabilistic localization system for a robot moving in
+            2D. It implements the adaptive (or KLD-sampling) Monte Carlo
+            localization approach (as described by Dieter Fox), which uses a
+            particle filter to track the pose of a robot against a known map.
+        </p>
+        <p>
+            Its based on amcl package provided by ROS but uses semantic features modelled in OpenStreetMap
+            instead of geometric features.
+        </p>
+    </description>
+    <url>http://wiki.ros.org/amcl</url>
+    <author>Lakshadeep Naik</author>
+    <author>lakshadeep.naik@gmail.com</author>
+    <maintainer email="lakshadeep.naik@gmail.com">Lakshadeep Naik</maintainer>
+    <license>GPLv3</license>
+
+    <buildtool_depend>catkin</buildtool_depend>
+
+    <build_depend>nav_msgs</build_depend>
+    <build_depend>osm_map_msgs</build_depend>
+    <build_depend>roscpp</build_depend>
+    <build_depend>std_srvs</build_depend>
+    <build_depend>tf</build_depend>
+
+    <run_depend>roscpp</run_depend>
+    <run_depend>tf</run_depend>
+    <run_depend>nav_msgs</run_depend>
+    <run_depend>osm_map_msgs</run_depend>
+    <run_depend>std_srvs</run_depend>
+</package>
