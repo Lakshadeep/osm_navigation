@@ -206,6 +206,12 @@ void SMCL::handleMapMessage(const osm_map_msgs::SemanticMap& msg)
     ROS_ASSERT(odom_);
     odom_->SetModel( odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_ );
 
+    delete wall_sides_;
+    wall_sides_ = new WallSides();
+    ROS_ASSERT(wall_sides_);
+    wall_sides_->setModelParams(z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_, chi_outlier_);
+    wall_sides_->updateMap(semantic_map_);
+
     applyInitialPose();
 }
 
@@ -350,10 +356,11 @@ void SMCL::odomReceived(const nav_msgs::OdometryConstPtr& odom_msg)
     updated_odom_pose_.v[2] = yaw;
 }
 
-void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMapConstPtr& semantic_map)
+void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_map)
 {
     last_semantic_features_received_ts_ = ros::Time::now();
-    if ( semantic_map_ == NULL ) {
+    if ( semantic_map_ == NULL ) 
+    {
         return;
     }
 
@@ -380,10 +387,36 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMapConstPtr& sem
         odata.pose = pose;
         odata.delta = delta;
 
+        WallSidesData wsdata;
+        wsdata.wall_sides_count = semantic_map.wall_sides.size();
+        wsdata.detected_wall_sides = (wall_side_sensor_t*)malloc(wsdata.wall_sides_count * sizeof(wall_side_sensor_t));
+
+        for (int i = 0; i < semantic_map.wall_sides.size(); i++)
+        {
+            point_t pt;
+            pt.x = semantic_map.wall_sides[i].corners[0].x;
+            pt.y = semantic_map.wall_sides[i].corners[0].y;
+            wsdata.detected_wall_sides[i].corner1 = pt;
+
+            pt.x = semantic_map.wall_sides[i].corners[1].x;
+            pt.y = semantic_map.wall_sides[i].corners[1].y;
+            wsdata.detected_wall_sides[i].corner2 = pt;
+
+            wsdata.detected_wall_sides[i].radius = semantic_map.wall_sides[i].radius;
+            wsdata.detected_wall_sides[i].angle = semantic_map.wall_sides[i].angle;
+        }
+
         if (update)
         {
             // Use the action data to update the filter
             odom_->UpdateAction(pf_, (SensorData*)&odata);
+            wall_sides_->UpdateSensor(pf_, (SensorData*)&wsdata);
+
+            // Resample the particles
+            if ((resample_count_ % 10) == 0)
+            { 
+                pf_update_resample(pf_);
+            }
 
             pf_sample_set_t* set = pf_->sets;
             geometry_msgs::PoseArray cloud_msg;
@@ -399,13 +432,87 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMapConstPtr& sem
             }
             particlecloud_pub_.publish(cloud_msg);
             pf_odom_pose_ = pose;
+
+            /////////////////////////////////////////////////////////////////////
+
+            double max_weight = 0.0;
+            int max_weight_hyp = -1;
+            std::vector<smcl_hyp_t> hyps;
+            hyps.resize(pf_->sets[pf_->current_set].cluster_count);
+            for (int hyp_count = 0;
+                hyp_count < pf_->sets[pf_->current_set].cluster_count; hyp_count++)
+            {
+                double weight;
+                pf_vector_t pose_mean;
+                pf_matrix_t pose_cov;
+                if (!pf_get_cluster_stats(pf_, hyp_count, &weight, &pose_mean, &pose_cov))
+                {
+                    ROS_ERROR("Couldn't get stats on cluster %d", hyp_count);
+                    break;
+                }
+
+                hyps[hyp_count].weight = weight;
+                hyps[hyp_count].pf_pose_mean = pose_mean;
+                hyps[hyp_count].pf_pose_cov = pose_cov;
+
+                if (hyps[hyp_count].weight > max_weight)
+                {
+                    max_weight = hyps[hyp_count].weight;
+                    max_weight_hyp = hyp_count;
+                }
+            }
+
+            if (max_weight > 0.0)
+            {
+                ROS_DEBUG("Max weight pose: %.3f %.3f %.3f",
+                          hyps[max_weight_hyp].pf_pose_mean.v[0],
+                          hyps[max_weight_hyp].pf_pose_mean.v[1],
+                          hyps[max_weight_hyp].pf_pose_mean.v[2]);
+
+
+
+                geometry_msgs::PoseWithCovarianceStamped p;
+                // Fill in the header
+                p.header.frame_id = global_frame_id_;
+                p.header.stamp = semantic_map.header.stamp;
+                // Copy in the pose
+                p.pose.pose.position.x = hyps[max_weight_hyp].pf_pose_mean.v[0];
+                p.pose.pose.position.y = hyps[max_weight_hyp].pf_pose_mean.v[1];
+                tf::quaternionTFToMsg(tf::createQuaternionFromYaw(hyps[max_weight_hyp].pf_pose_mean.v[2]),
+                                      p.pose.pose.orientation);
+                // Copy in the covariance, converting from 3-D to 6-D
+                pf_sample_set_t* set = pf_->sets + pf_->current_set;
+                for (int i = 0; i < 2; i++)
+                {
+                    for (int j = 0; j < 2; j++)
+                    {
+                        // Report the overall filter covariance, rather than the
+                        // covariance for the highest-weight cluster
+                        //p.covariance[6*i+j] = hyps[max_weight_hyp].pf_pose_cov.m[i][j];
+                        p.pose.covariance[6 * i + j] = set->cov.m[i][j];
+                    }
+                }
+                // Report the overall filter covariance, rather than the
+                // covariance for the highest-weight cluster
+                //p.covariance[6*5+5] = hyps[max_weight_hyp].pf_pose_cov.m[2][2];
+                p.pose.covariance[6 * 5 + 5] = set->cov.m[2][2];
+
+                tf::Transform transform;
+                transform.setOrigin( tf::Vector3(p.pose.pose.position.x, p.pose.pose.position.z, 0.0));
+                tf::Quaternion q;
+                q.setRPY(0, 0, hyps[max_weight_hyp].pf_pose_mean.v[2]);
+                transform.setRotation(q);
+                br_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), global_frame_id_, base_frame_id_));
+            }
+            resample_count_ = resample_count_ + 1;
         }
         else
         {
-            ROS_INFO("No motion detected");
+            //ROS_INFO("No motion detected");
         }
+        
     }
-    if (!pf_init_)
+    else
     {
         // Pose at last filter update
         pf_odom_pose_ = pose;

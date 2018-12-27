@@ -14,6 +14,7 @@
 #include "smcl/map/semantic_map.h"
 #include "smcl/pf/pf.h"
 #include "smcl/sensors/odom.h"
+#include "smcl/sensors/wall_sides.h"
 
 // roscpp
 #include "ros/assert.h"
@@ -81,7 +82,7 @@ private:
     bool globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
     bool nomotionUpdateCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
     bool setMapCallback(osm_map_msgs::SetSemanticMap::Request& req, osm_map_msgs::SetSemanticMap::Response& res);
-    void semanticFeaturesReceived(const osm_map_msgs::SemanticMapConstPtr& semantic_map);
+    void semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_map);
     void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
     void handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& msg);
     void mapReceived(const osm_map_msgs::SemanticMapConstPtr& msg);
@@ -141,7 +142,7 @@ private:
     int min_particles_, max_particles_;
     double alpha1_, alpha2_, alpha3_, alpha4_, alpha5_;
     double alpha_slow_, alpha_fast_;
-    double z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_;
+    double z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_, chi_outlier_;
     //beam skip related params
     bool do_beamskip_;
     double beam_skip_distance_, beam_skip_threshold_, beam_skip_error_threshold_;
@@ -149,6 +150,8 @@ private:
     double init_pose_[3];
     double init_cov_[3];
     Odom* odom_;
+
+    WallSides* wall_sides_;
 
     //Nomotion update control
     bool m_force_update;  // used to temporarily let xmcl update samples even when no motion occurs...
@@ -159,6 +162,7 @@ private:
     //time for tolerance on the published transform,
     //basically defines how long a map->odom transform is good for
     ros::Duration transform_tolerance_;
+    tf::TransformBroadcaster br_;
 
     ros::NodeHandle nh_;
     ros::NodeHandle private_nh_;
