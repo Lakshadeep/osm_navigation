@@ -27,6 +27,23 @@ Plans waypoint based trajectory from starting area to destination area using beh
 #### Launch
 `roslaunch osm_low_level_planner osm_low_level_planner.launch`
 
+#### Tests
+```
+rosrun actionlib axclient.py  "/osm_low_level_planner" osm_low_level_planner/OSMLowLevelPlannerAction
+
+start_floor: 'BRSU_L0'
+destination_floor: 'BRSU_L0'
+start_area: 'BRSU_C_L0_C9'
+destination_area: 'BRSU_C_L0_C2'
+start_local_area: 'BRSU_C_L0_C9_LA1'
+destination_local_area: 'BRSU_C_L0_C2_LA1'
+start_position: 
+  x: 0.0
+  y: 0.0
+  z: 0.0
+destination_task: ''
+```
+
 ## Semantic Monte Carlo Localization (SMCL)
 Implements MCL using semantic features modelled in OSM world model. Assumes that robot position is known at area level and then use semantic features obtained from semantic map of an area for localization.
 
