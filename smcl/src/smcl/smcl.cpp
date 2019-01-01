@@ -209,7 +209,7 @@ void SMCL::handleMapMessage(const osm_map_msgs::SemanticMap& msg)
     delete wall_sides_;
     wall_sides_ = new WallSides();
     ROS_ASSERT(wall_sides_);
-    wall_sides_->setSensorParams(0.3, 5.0, -M_PI/2.0, -M_PI/2.0);
+    wall_sides_->setSensorParams(0.1, 5.0, -M_PI/2.0, -M_PI/2.0);
     wall_sides_->setModelParams(z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_, chi_outlier_);
     wall_sides_->updateMap(semantic_map_);
 
@@ -333,8 +333,6 @@ pf_vector_t SMCL::uniformPoseGenerator(void* arg)
     semantic_map_t* map = (semantic_map_t*)arg;
     pf_vector_t p;
 
-    ROS_DEBUG("Generating new uniform sample");
-
     p.v[0] = map->min_x + drand48() * (map->max_x - map->min_x);
     p.v[1] = map->min_y + drand48() * (map->max_y - map->min_y);
     p.v[2] = drand48() * 2 * M_PI - M_PI;
@@ -365,7 +363,8 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_ma
         return;
     }
 
-    // Where was the robot when this scan was taken?
+    // we take latest odom pose and semantic features
+    // better way will be to get odom using time stamp in semantic feaztures msg
     pf_vector_t pose = updated_odom_pose_;
 
     pf_vector_t delta = pf_vector_zero();
@@ -377,12 +376,9 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_ma
         delta.v[1] = pose.v[1] - pf_odom_pose_.v[1];
         delta.v[2] = angle_diff(pose.v[2], pf_odom_pose_.v[2]);
 
-        // See if we should update the filter
-        bool update = fabs(delta.v[0]) > d_thresh_ ||
-                      fabs(delta.v[1]) > d_thresh_ ||
-                      fabs(delta.v[2]) > a_thresh_;
-        // update = update || m_force_update;
-        m_force_update = false;
+        // we update filter only when robot moves
+        //bool update = fabs(delta.v[0]) > d_thresh_ || fabs(delta.v[1]) > d_thresh_ || fabs(delta.v[2]) > a_thresh_;
+        bool update = true;
 
         OdomData odata;
         odata.pose = pose;
@@ -406,6 +402,7 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_ma
             wsdata.detected_wall_sides[i].radius = semantic_map.wall_sides[i].radius;
             wsdata.detected_wall_sides[i].angle = semantic_map.wall_sides[i].angle;
         }
+        wsdata.sensor = wall_sides_;
 
         if (update)
         {

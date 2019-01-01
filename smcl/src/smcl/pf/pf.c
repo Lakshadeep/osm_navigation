@@ -149,6 +149,7 @@ void pf_init(pf_t *pf, pf_vector_t mean, pf_matrix_t cov)
   pdf = pf_pdf_gaussian_alloc(mean, cov);
     
   // Compute the new sample poses
+  // printf("$TotalSamples:%d\n", set->sample_count);
   for (i = 0; i < set->sample_count; i++)
   {
     sample = set->samples + i;
@@ -193,12 +194,14 @@ void pf_init_model(pf_t *pf, pf_init_model_fn_t init_fn, void *init_data)
     sample = set->samples + i;
     sample->weight = 1.0 / pf->max_samples;
     sample->pose = (*init_fn) (init_data);
-
+    // printf("$Sample:%d,%f,%f,%f,%f\n", i, sample->pose.v[0], sample->pose.v[1], sample->pose.v[2], sample->weight);
     // Add sample to histogram
     pf_kdtree_insert(set->kdtree, sample->pose, sample->weight);
   }
 
   pf->w_slow = pf->w_fast = 0.0;
+
+  // printf("$Params:%f,%f,%f\n", 0.0, pf->w_slow, pf->w_fast);
 
   // Re-compute cluster statistics
   pf_cluster_stats(pf, set);
@@ -280,14 +283,17 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
   {
     // Normalize weights
     double w_avg=0.0;
+    // printf("$TotalSamples:%d\n", set->sample_count);
     for (i = 0; i < set->sample_count; i++)
     {
       sample = set->samples + i;
-      w_avg += sample->weight;
+      w_avg *= sample->weight;
       sample->weight /= total;
+      // printf("$Sample:%d,%f,%f,%f,%f\n", i, sample->pose.v[0], sample->pose.v[1], sample->pose.v[2], sample->weight);
     }
     // Update running averages of likelihood of samples (Prob Rob p258)
     w_avg /= set->sample_count;
+    // printf("w_avg %f\n", w_avg);
     if(pf->w_slow == 0.0)
       pf->w_slow = w_avg;
     else
@@ -298,6 +304,7 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
       pf->w_fast += pf->alpha_fast * (w_avg - pf->w_fast);
     //printf("w_avg: %e slow: %e fast: %e\n", 
            //w_avg, pf->w_slow, pf->w_fast);
+    // printf("$Params:%f,%f,%f\n", w_avg, pf->w_slow, pf->w_fast);
   }
   else
   {
@@ -349,7 +356,7 @@ void pf_update_resample(pf_t *pf)
   w_diff = 1.0 - pf->w_fast / pf->w_slow;
   if(w_diff < 0.0)
     w_diff = 0.0;
-  //printf("w_diff: %9.6f\n", w_diff);
+  // printf("w_diff: %9.6f\n", w_diff);
 
   // Can't (easily) combine low-variance sampler with KLD adaptive
   // sampling, so we'll take the more traditional route.

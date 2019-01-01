@@ -62,7 +62,8 @@ private:
     double chi_outlier_;
 
     // cached features for sensor update
-    std::vector<wall_side_sensor_t> expected_wall_sides;
+    wall_side_sensor_t* expected_wall_sides;
+    int expected_wall_sides_count;
     
     // functions for finding visible wall sides for a given sample
     std::vector<wall_side_sensor_t> getVisibleSides(pf_vector_t sample);

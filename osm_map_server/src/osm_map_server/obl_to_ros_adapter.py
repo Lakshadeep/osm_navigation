@@ -7,7 +7,7 @@ class OBLToROSAdapter(object):
     def convert_obl_pillar_obj_to_ros_pillar_msg(pillar_obj) :
         pillar = Pillar()
         pillar.id = pillar_obj.id
-        pillar.shape = OBLToROSAdapter.convert_obl_shape_obj_to_ros_polygon_msg(pillar_obj.geometry) 
+        pillar.point = OBLToROSAdapter.convert_obl_shape_obj_to_ros_point_msg(pillar_obj.geometry) 
         return pillar
 
     @staticmethod
@@ -48,3 +48,15 @@ class OBLToROSAdapter(object):
         for pt_obj in shape_obj.points:
             polygon.points.append(OBLToROSAdapter.convert_obl_point_obj_to_ros_point_msg(pt_obj))
         return polygon
+
+    @staticmethod
+    def convert_obl_shape_obj_to_ros_point_msg(shape_obj) :
+        point = geometry_msgs.msg.Point()
+        x_mid = 0.0
+        y_mid = 0.0
+        for pt_obj in shape_obj.points:
+            x_mid = x_mid + pt_obj.x
+            y_mid = y_mid + pt_obj.y
+        point.x = x_mid /len(shape_obj.points)
+        point.y = y_mid /len(shape_obj.points)
+        return point

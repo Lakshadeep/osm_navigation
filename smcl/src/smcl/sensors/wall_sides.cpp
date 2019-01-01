@@ -7,18 +7,20 @@ WallSides::WallSides()
 
 WallSides::~WallSides()
 {
+    delete expected_wall_sides; 
 }
 
 // updates expected wall sides using newly updated map
 void WallSides::updateMap(semantic_map_t *map)
 {
-    expected_wall_sides.clear();
-    for (int i = 0; i < map->no_of_wall_sides; i++)
+    expected_wall_sides = (wall_side_sensor_t*)malloc(map->no_of_wall_sides * sizeof(wall_side_sensor_t));
+    expected_wall_sides_count = map->no_of_wall_sides;
+
+    for (int i = 0; i < expected_wall_sides_count; i++)
     {
-        wall_side_sensor_t temp;
-        temp.corner1 = map->wall_sides[i].corner1;
-        temp.corner2 = map->wall_sides[i].corner2;
-        expected_wall_sides.push_back(temp);
+        expected_wall_sides[i].corner1 = map->wall_sides[i].corner1;
+        expected_wall_sides[i].corner2 = map->wall_sides[i].corner2;
+        // printf("$ExpectedSide:%d,%f,%f,%f,%f\n",i, expected_wall_sides[i].corner1.x, expected_wall_sides[i].corner1.y, expected_wall_sides[i].corner2.x, expected_wall_sides[i].corner2.y);
     }
 }
 
@@ -53,15 +55,13 @@ bool WallSides::UpdateSensor(pf_t *pf, SensorData *data)
 std::vector<wall_side_sensor_t> WallSides::getVisibleSides(pf_vector_t sample)
 {
     std::vector<wall_side_sensor_t> visible_sides;
-    for(auto wall_it = expected_wall_sides.begin(); wall_it != expected_wall_sides.end(); wall_it++)
+    for(int i = 0; i < expected_wall_sides_count; i++)
     {
-        wall_side_sensor_t *temp;
-        temp = (wall_side_sensor_t*)malloc(sizeof(wall_side_sensor_t)); 
-        temp->corner1 = wall_it->corner1;
-        temp->corner2 = wall_it->corner2;
-        if (getVisibleReorderedSide(temp, sample))
+        wall_side_sensor_t temp;
+        temp = expected_wall_sides[i];                // TODO : check this!
+        if (getVisibleReorderedSide(&temp, sample))
         {
-            visible_sides.push_back(*temp);
+            visible_sides.push_back(temp);
         }
     }
     return visible_sides;
@@ -82,7 +82,7 @@ bool WallSides::getVisibleReorderedSide(wall_side_sensor_t *side, pf_vector_t sa
         if (angle_corner1 > angle_corner2)
         {
             point_t temp = side->corner2;
-            side->corner2 = temp;
+            side->corner2 = side->corner1;
             side->corner1 = temp;
         }
         calculateRadiusAndAngle(side);
@@ -142,49 +142,48 @@ point_t WallSides::globalToLocalTransformation(double ref_x, double ref_y, doubl
 void WallSides::convertSideToSampleCoordinates(wall_side_sensor_t *side, pf_vector_t sample)
 {
     side->corner1 = globalToLocalTransformation(sample.v[0], sample.v[1], sample.v[2], side->corner1);
-    side->corner1 = globalToLocalTransformation(sample.v[0], sample.v[1], sample.v[2], side->corner2);
+    side->corner2 = globalToLocalTransformation(sample.v[0], sample.v[1], sample.v[2], side->corner2);
 }
 
 double WallSides::computeWeight(WallSidesData *data, pf_sample_t *sample)
 {
-    double weight = 1.0;
-    // pf_vector_t *pf_vec = sample->pose;
     std::vector<wall_side_sensor_t> visible_sides = getVisibleSides(sample->pose);
+    double weight = 0.0;
 
     for (auto visible_it = visible_sides.begin(); visible_it != visible_sides.end(); visible_it++)
     {
+        double pz = 0.0;
         for(int i = 0; i < data->wall_sides_count; i++)
-        {
-            
-            double ang_diff = fabs(visible_it->angle - data->detected_wall_sides[i].angle);
-            double rad_diff = fabs(visible_it->radius - data->detected_wall_sides[i].radius);
+        {            
+            double z = fabs(visible_it->radius - data->detected_wall_sides[i].radius);
 
-            if (fabs(visible_it->angle) - 0.3 < data->detected_wall_sides[i].angle < fabs(visible_it->angle) + 0.3 )
-            {
-                double pz = 0.0;
-                double z = rad_diff;
-
+            if (fabs(visible_it->angle) - 0.15 < fabs(data->detected_wall_sides[i].angle) < fabs(visible_it->angle) + 0.15)
+            {                
                 // Part 1: good, but noisy, hit
-                pz += z_hit_ * exp(-(z * z) / (2 * sigma_hit_ * sigma_hit_));
-
-                // Part 2: short reading from unexpected obstacle (e.g., a person)
-                if(z < 0)
-                  pz += z_short_ * lambda_short_ * exp(-lambda_short_*data->detected_wall_sides[i].radius);
-
-                // Part 3: Failure to detect obstacle, reported as max-range
-                if(data->detected_wall_sides[i].radius == z_max_)
-                  pz += z_max_ * 1.0;
-
-                // Part 4: Random measurements
-                if(data->detected_wall_sides[i].radius < z_max_)
-                  pz += z_rand_ * 1.0/z_max_;
-
-                assert(pz <= 1.0);
-                assert(pz >= 0.0);
-
-                weight += pz*pz*pz;
+                pz = pz + (z_hit_ * exp(-(z * z) / (2 * sigma_hit_ * sigma_hit_)));
+                // pz = pz + exp(-(z * z)/(2*M_PI*sigma_hit_));
             }
+
+            // Part 2: short reading from unexpected obstacle (e.g., a person)
+            if(data->detected_wall_sides[i].radius < sensor_range_min_)
+              pz = pz + z_short_ * lambda_short_ * exp(-lambda_short_*data->detected_wall_sides[i].radius);
+
+            // Part 3: Failure to detect obstacle, reported as max-range
+            if(data->detected_wall_sides[i].radius == z_max_)
+              pz = pz + z_max_ * 1.0;
+
+            // Part 4: Random measurements
+            if(data->detected_wall_sides[i].radius < z_max_)
+              pz = pz + z_rand_ * 1.0/z_max_;
+
+            // assert(pz <= 1.0);
+            // assert(pz >= 0.0);
+
+            // weight += pz*pz*pz;
+            pz += pz;
+
         }
+        weight = weight + pz;
     }
     return weight;
 }
@@ -193,6 +192,11 @@ double WallSides::computeWeights(WallSidesData *data, pf_sample_set_t* set)
 {
     WallSides *self;
     self = (WallSides*) data->sensor;
+
+    // for(int i = 0; i < data->wall_sides_count; i++)
+    // {
+    //     printf("$ObservedSide:%f,%f,%f,%f,%f,%f\n", data->detected_wall_sides[i].corner1.x, data->detected_wall_sides[i].corner1.y, data->detected_wall_sides[i].corner2.x, data->detected_wall_sides[i].corner2.y, data->detected_wall_sides[i].radius, data->detected_wall_sides[i].angle);
+    // }
 
     double weight;
     pf_sample_t *sample;
@@ -203,8 +207,8 @@ double WallSides::computeWeights(WallSidesData *data, pf_sample_set_t* set)
         sample = set->samples + i;
         pose = sample->pose; 
         weight = self->computeWeight(data, sample);
-        sample->weight *= weight;
-        total_weights = total_weights + weight;
+        sample->weight += weight;
+        total_weights = total_weights + sample->weight;
     }
     return total_weights;
 }
