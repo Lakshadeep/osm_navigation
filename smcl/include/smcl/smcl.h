@@ -15,6 +15,7 @@
 #include "smcl/pf/pf.h"
 #include "smcl/sensors/odom.h"
 #include "smcl/sensors/wall_sides.h"
+#include "smcl/sensors/pillars.h"
 
 // roscpp
 #include "ros/assert.h"
@@ -152,6 +153,7 @@ private:
     Odom* odom_;
 
     WallSides* wall_sides_;
+    Pillars* pillars_;
 
     //Nomotion update control
     bool m_force_update;  // used to temporarily let xmcl update samples even when no motion occurs...

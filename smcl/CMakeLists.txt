@@ -27,7 +27,8 @@ add_library(smcl_pf src/smcl/pf/pf.c src/smcl/pf/pf_kdtree.c src/smcl/pf/pf_pdf.
 
 add_library(smcl_map src/smcl/map/semantic_map.c)
 
-add_library(smcl_sensors src/smcl/sensors/sensor.cpp src/smcl/sensors/odom.cpp src/smcl/sensors/wall_sides.cpp)
+add_library(smcl_sensors src/smcl/sensors/sensor.cpp src/smcl/sensors/odom.cpp src/smcl/sensors/wall_sides.cpp src/smcl/sensors/pillars.cpp )
+
 
 target_link_libraries(smcl_map smcl_pf smcl_sensors)
 

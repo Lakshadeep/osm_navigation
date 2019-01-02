@@ -213,6 +213,13 @@ void SMCL::handleMapMessage(const osm_map_msgs::SemanticMap& msg)
     wall_sides_->setModelParams(z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_, chi_outlier_);
     wall_sides_->updateMap(semantic_map_);
 
+    delete pillars_;
+    pillars_ = new Pillars();
+    ROS_ASSERT(pillars_);
+    pillars_->setSensorParams(0.1, 5.0, -M_PI/2.0, -M_PI/2.0);
+    pillars_->setModelParams(z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_, chi_outlier_);
+    pillars_->updateMap(semantic_map_);
+
     applyInitialPose();
 }
 
@@ -317,7 +324,6 @@ semantic_map_t* SMCL::convertMap( const osm_map_msgs::SemanticMap& semantic_map_
             map->pillars[i].corners[j] = pt;
         }
     }
-
     return map;
 }
 
@@ -380,13 +386,17 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_ma
         //bool update = fabs(delta.v[0]) > d_thresh_ || fabs(delta.v[1]) > d_thresh_ || fabs(delta.v[2]) > a_thresh_;
         bool update = true;
 
-        OdomData odata;
-        odata.pose = pose;
-        odata.delta = delta;
+        PillarsData pdata;
+        pdata.pillars_count = semantic_map.pillars.size();
+        pdata.detected_pillars = (pillar_sensor_t*)malloc(pdata.pillars_count * sizeof(pillar_sensor_t));
 
         WallSidesData wsdata;
         wsdata.wall_sides_count = semantic_map.wall_sides.size();
         wsdata.detected_wall_sides = (wall_side_sensor_t*)malloc(wsdata.wall_sides_count * sizeof(wall_side_sensor_t));
+
+        OdomData odata;
+        odata.pose = pose;
+        odata.delta = delta;
 
         for (int i = 0; i < semantic_map.wall_sides.size(); i++)
         {
@@ -404,11 +414,25 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_ma
         }
         wsdata.sensor = wall_sides_;
 
+        for (int i = 0; i < semantic_map.pillars.size(); i++)
+        {
+            point_t pt;
+            pt.x = semantic_map.pillars[i].point.x;
+            pt.y = semantic_map.pillars[i].point.y;
+            pdata.detected_pillars[i].point = pt;
+
+            pdata.detected_pillars[i].radius = semantic_map.pillars[i].radius;
+            pdata.detected_pillars[i].angle = semantic_map.pillars[i].angle;
+        }
+        pdata.sensor = pillars_;
+
         if (update)
         {
-            // Use the action data to update the filter
             odom_->UpdateAction(pf_, (SensorData*)&odata);
             wall_sides_->UpdateSensor(pf_, (SensorData*)&wsdata);
+            pillars_->UpdateSensor(pf_, (SensorData*)&pdata);
+
+            pf_update_sensor_weights_and_params(pf_);
 
             // Resample the particles
             if ((resample_count_ % 10) == 0)
@@ -503,10 +527,6 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_ma
                 br_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), global_frame_id_, base_frame_id_));
             }
             resample_count_ = resample_count_ + 1;
-        }
-        else
-        {
-            //ROS_INFO("No motion detected");
         }
         
     }

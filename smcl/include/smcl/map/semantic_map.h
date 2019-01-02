@@ -38,6 +38,7 @@ typedef struct
 {
   int no_of_corners;
   point_t *corners;
+  point_t point;
 } pillar_t;
 
 

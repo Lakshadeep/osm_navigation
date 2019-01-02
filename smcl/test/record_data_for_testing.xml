@@ -1,0 +1,20 @@
+<launch>
+    <node name="map_server_node" pkg="osm_map_server" type="map_server_node.py" output="screen">
+        <param name="overpass_server_ip" value="172.16.1.100" />
+        <param name="overpass_server_port" value="8000" />
+        <param name="ref_latitude" value="50.7800401" />  
+        <param name="ref_longitude" value="7.18226" />
+    </node>
+
+    <node name="map_visualizer" pkg="rviz_visualization" type="map_visualizer.py" />
+
+    <include file="$(find semantic_feature_detection)/launch/semantic_feature_detection.launch" />
+
+    <node name="rosbag" pkg="rosbag" type="record"  args="record -o $(find smcl)/test/data/ /ropod/odom /ropod/imu_data /ropod/cmd_vel /semantic_features_detected /semantic_map /geometric_map /semantic_map_markers /geometric_map_markers /clock"/>
+    
+    <include file="$(find ropod_gazebo)/launch/ropod_sim.launch" />
+    <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui"/>
+
+    <node type="get_geometric_map_test.py" name="get_geometric_map" pkg="osm_map_server"/>
+    <node type="get_semantic_map_test.py" name="get_semantic_map" pkg="osm_map_server"/>
+</launch>
