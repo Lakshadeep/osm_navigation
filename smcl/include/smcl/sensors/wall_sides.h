@@ -64,6 +64,11 @@ private:
     // cached features for sensor update
     wall_side_sensor_t* expected_wall_sides;
     int expected_wall_sides_count;
+
+    // feature registration related functions
+    point_t polarToCartesian(double radius, double angle);
+    double calculate_euclidean_distance(point_t pt1, point_t pt2);
+    std::vector<std::pair<wall_side_sensor_t, int>> registerWallSides(std::vector<wall_side_sensor_t> visible_sides, WallSidesData *data);
     
     // functions for finding visible wall sides for a given sample
     std::vector<wall_side_sensor_t> getVisibleSides(pf_vector_t sample);

@@ -23,7 +23,7 @@ catkin_package(
 include_directories(include)
 include_directories(${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
-add_library(smcl_pf src/smcl/pf/pf.c src/smcl/pf/pf_kdtree.c src/smcl/pf/pf_pdf.c src/smcl/pf/pf_vector.c src/smcl/pf/eig3.c src/smcl/pf/pf_draw.c)
+add_library(smcl_pf src/smcl/pf/pf.c src/smcl/pf/pf_kdtree.c src/smcl/pf/pf_pdf.c src/smcl/pf/pf_vector.c src/smcl/pf/eig3.c)
 
 add_library(smcl_map src/smcl/map/semantic_map.c)
 
