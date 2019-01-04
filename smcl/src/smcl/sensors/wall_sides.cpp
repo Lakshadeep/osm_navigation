@@ -223,6 +223,7 @@ bool WallSides::updateSampleFeatures(pf_sample_t *sample, std::vector<std::pair<
     point_t *tmp_registered_features = (point_t*)realloc(sample->registered_features, (sample->no_of_expected_features + registered_sides.size())* sizeof(point_t));
     if (tmp_expected_features == NULL && tmp_registered_features == NULL)
     {
+        ROS_INFO("I am dieing here: %d", registered_sides.size());
         return false;
     }
     else
@@ -230,11 +231,10 @@ bool WallSides::updateSampleFeatures(pf_sample_t *sample, std::vector<std::pair<
         sample->expected_features = tmp_expected_features;
         sample->registered_features = tmp_registered_features;
 
-        ROS_INFO("I am dieing here: %d", registered_sides.size());
-        for(int i = sample->no_of_expected_features; i < (sample->no_of_expected_features + registered_sides.size()); i++)
+        for(int i = 0; i < registered_sides.size(); i++)
         {
-            sample->expected_features[i] = polarToCartesian(registered_sides[i].first.radius, registered_sides[i].first.angle);
-            sample->registered_features[i] = polarToCartesian(data->detected_wall_sides[registered_sides[i].second].radius, data->detected_wall_sides[registered_sides[i].second].angle);
+            sample->expected_features[sample->no_of_expected_features + i] = polarToCartesian(registered_sides[i].first.radius, registered_sides[i].first.angle);
+            sample->registered_features[sample->no_of_expected_features + i] = polarToCartesian(data->detected_wall_sides[registered_sides[i].second].radius, data->detected_wall_sides[registered_sides[i].second].angle);
         }
         sample->no_of_expected_features = sample->no_of_expected_features  + registered_sides.size();
         return true;
