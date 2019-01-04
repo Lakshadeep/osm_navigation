@@ -191,7 +191,8 @@ double WallSides::computeWeight(WallSidesData *data, pf_sample_t *sample)
 {
     std::vector<wall_side_sensor_t> visible_sides = getVisibleSides(sample->pose);
 
-    std::vector<std::pair<wall_side_sensor_t, int>> registered_sides = registerWallSides(visible_sides, data);     
+    std::vector<std::pair<wall_side_sensor_t, int>> registered_sides = registerWallSides(visible_sides, data);
+    updateSampleFeatures(sample, registered_sides, data);     
 
     double pz = 0.0; 
     for (auto reg_it = registered_sides.begin(); reg_it != registered_sides.end(); reg_it++)
@@ -214,6 +215,30 @@ double WallSides::computeWeight(WallSidesData *data, pf_sample_t *sample)
           pz = pz + z_rand_ * 1.0/z_max_;
     }
     return pz;
+}
+
+bool WallSides::updateSampleFeatures(pf_sample_t *sample, std::vector<std::pair<wall_side_sensor_t, int>> registered_sides, WallSidesData *data)
+{
+    point_t *tmp_expected_features = (point_t*)realloc(sample->expected_features, (sample->no_of_expected_features + registered_sides.size()) * sizeof(point_t));
+    point_t *tmp_registered_features = (point_t*)realloc(sample->registered_features, (sample->no_of_expected_features + registered_sides.size())* sizeof(point_t));
+    if (tmp_expected_features == NULL && tmp_registered_features == NULL)
+    {
+        return false;
+    }
+    else
+    {
+        sample->expected_features = tmp_expected_features;
+        sample->registered_features = tmp_registered_features;
+
+        ROS_INFO("I am dieing here: %d", registered_sides.size());
+        for(int i = sample->no_of_expected_features; i < (sample->no_of_expected_features + registered_sides.size()); i++)
+        {
+            sample->expected_features[i] = polarToCartesian(registered_sides[i].first.radius, registered_sides[i].first.angle);
+            sample->registered_features[i] = polarToCartesian(data->detected_wall_sides[registered_sides[i].second].radius, data->detected_wall_sides[registered_sides[i].second].angle);
+        }
+        sample->no_of_expected_features = sample->no_of_expected_features  + registered_sides.size();
+        return true;
+    }
 }
 
 double WallSides::computeWeights(WallSidesData *data, pf_sample_set_t* set)

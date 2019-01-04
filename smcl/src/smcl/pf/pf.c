@@ -30,9 +30,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "amcl/pf/pf.h"
-#include "amcl/pf/pf_pdf.h"
-#include "amcl/pf/pf_kdtree.h"
+#include "smcl/pf/pf.h"
+#include "smcl/pf/pf_pdf.h"
+#include "smcl/pf/pf_kdtree.h"
 
 
 // Compute the required number of samples, given that there are k bins
@@ -155,6 +155,7 @@ void pf_init(pf_t *pf, pf_vector_t mean, pf_matrix_t cov)
     sample = set->samples + i;
     sample->weight = 1.0 / pf->max_samples;
     sample->pose = pf_pdf_gaussian_sample(pdf);
+    sample->no_of_expected_features = 0;
 
     // Add sample to histogram
     pf_kdtree_insert(set->kdtree, sample->pose, sample->weight);
@@ -252,6 +253,18 @@ int pf_update_converged(pf_t *pf)
   return 1; 
 }
 
+void pf_free_samples_features(pf_sample_set_t *set)
+{
+  pf_sample_t *sample;
+  for (int i = 0; i < set->sample_count; i++)
+  {
+    sample = set->samples + i;
+    sample->no_of_expected_features = 0;
+    free(sample->expected_features);
+    free(sample->registered_features);
+  }
+}
+
 // Update the filter with some new action
 void pf_update_action(pf_t *pf, pf_action_model_fn_t action_fn, void *action_data)
 {
@@ -260,8 +273,15 @@ void pf_update_action(pf_t *pf, pf_action_model_fn_t action_fn, void *action_dat
   set = pf->sets + pf->current_set;
 
   (*action_fn) (action_data, set);
+
+  pf_free_samples_features(set);  // deletes samples observed previously
   
   return;
+}
+
+void pf_re_orient_samples(pf_t *pf)
+{
+
 }
 
 

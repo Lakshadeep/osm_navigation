@@ -102,11 +102,16 @@ double Pillars::computeWeight(PillarsData *data, pf_sample_t *sample)
         {            
             double z = fabs(visible_it->radius - data->detected_pillars[i].radius);
 
-            if (fabs(visible_it->angle) - 0.15 < fabs(data->detected_pillars[i].angle) < fabs(visible_it->angle) + 0.15)
+            if ((fabs(visible_it->angle) - 0.15 < fabs(data->detected_pillars[i].angle) < fabs(visible_it->angle) + 0.15) && z < 2.0)
             {                
                 // Part 1: good, but noisy, hit
                 pz = pz + (z_hit_ * exp(-(z * z) / (2 * sigma_hit_ * sigma_hit_)));
                 // pz = pz + exp(-(z * z)/(2*M_PI*sigma_hit_));
+                printf("%f\n",pz );
+            }
+            else
+            {
+                pz = pz - 0.5;
             }
 
             // Part 2: short reading from unexpected obstacle (e.g., a person)
@@ -128,6 +133,7 @@ double Pillars::computeWeight(PillarsData *data, pf_sample_t *sample)
             pz += pz;
 
         }
+        // printf("%f\n",pz );
         weight = weight + pz;
     }
     return weight;

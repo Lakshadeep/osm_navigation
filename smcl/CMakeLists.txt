@@ -17,7 +17,7 @@ find_package(Boost REQUIRED)
 catkin_package(
     CATKIN_DEPENDS roscpp tf nav_msgs std_srvs osm_map_msgs
     INCLUDE_DIRS include
-    LIBRARIES smcl_map smcl_pf
+    LIBRARIES smcl_map smcl_pf smcl_sensors
 )
 
 include_directories(include)
