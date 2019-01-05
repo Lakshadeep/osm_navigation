@@ -30,14 +30,18 @@
 
 #include "pf_vector.h"
 #include "pf_kdtree.h"
+#include "../map/semantic_map.h"
 
+#include <Eigen/Dense>   // used for SVD computations
+#include <Eigen/SVD>
+
+#include <iostream>
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // Forward declarations
 struct _pf_t;
-struct _rtk_fig_t;
 struct _pf_sample_set_t;
 
 // Function prototype for the initialization model; generates a sample pose from
@@ -63,7 +67,14 @@ typedef struct
 
   // Weight for this pose
   double weight;
-  
+
+  // expected features
+  point_t *expected_features;
+  int no_of_expected_features;
+
+  // registered features to expected features
+  point_t *registered_features;
+
 } pf_sample_t;
 
 
@@ -158,6 +169,12 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
 
 void pf_update_sensor_weights_and_params(pf_t *pf);
 
+void pf_free_samples_features(pf_sample_set_t *set);
+
+void pf_re_orient_samples(pf_t *pf);
+
+double pi_to_pi(double angle);
+
 // Resample the distribution
 void pf_update_resample(pf_t *pf);
 
@@ -172,18 +189,6 @@ int pf_get_cluster_stats(pf_t *pf, int cluster, double *weight,
 // Re-compute the cluster statistics for a sample set
 void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set);
 
-
-// Display the sample set
-void pf_draw_samples(pf_t *pf, struct _rtk_fig_t *fig, int max_samples);
-
-// Draw the histogram (kdtree)
-void pf_draw_hist(pf_t *pf, struct _rtk_fig_t *fig);
-
-// Draw the CEP statistics
-void pf_draw_cep_stats(pf_t *pf, struct _rtk_fig_t *fig);
-
-// Draw the cluster statistics
-void pf_draw_cluster_stats(pf_t *pf, struct _rtk_fig_t *fig);
 
 //calculate if the particle filter has converged - 
 //and sets the converged flag in the current set and the pf 

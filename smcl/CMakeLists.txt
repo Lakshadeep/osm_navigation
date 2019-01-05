@@ -17,13 +17,13 @@ find_package(Boost REQUIRED)
 catkin_package(
     CATKIN_DEPENDS roscpp tf nav_msgs std_srvs osm_map_msgs
     INCLUDE_DIRS include
-    LIBRARIES smcl_map smcl_pf
+    LIBRARIES smcl_map smcl_pf smcl_sensors
 )
 
 include_directories(include)
 include_directories(${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
-add_library(smcl_pf src/smcl/pf/pf.c src/smcl/pf/pf_kdtree.c src/smcl/pf/pf_pdf.c src/smcl/pf/pf_vector.c src/smcl/pf/eig3.c src/smcl/pf/pf_draw.c)
+add_library(smcl_pf src/smcl/pf/pf.cpp src/smcl/pf/pf_kdtree.c src/smcl/pf/pf_pdf.c src/smcl/pf/pf_vector.c src/smcl/pf/eig3.c)
 
 add_library(smcl_map src/smcl/map/semantic_map.c)
 

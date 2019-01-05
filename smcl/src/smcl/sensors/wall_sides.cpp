@@ -67,6 +67,49 @@ std::vector<wall_side_sensor_t> WallSides::getVisibleSides(pf_vector_t sample)
     return visible_sides;
 }
 
+// registers visible sides to observed using closest point approach
+std::vector<std::pair<wall_side_sensor_t, int>> WallSides::registerWallSides(std::vector<wall_side_sensor_t> visible_sides, WallSidesData *data)
+{
+    std::vector<std::vector<double>> distance_matrix(data->wall_sides_count, std::vector<double>(expected_wall_sides_count));
+    
+    for(int j = 0; j < data->wall_sides_count; j++)
+    {
+        int i = 0;
+        point_t o_pt = polarToCartesian(data->detected_wall_sides[j].radius, data->detected_wall_sides[j].angle);
+        for (auto v_it = visible_sides.begin(); v_it != visible_sides.end(); v_it++)
+        {
+            point_t v_pt = polarToCartesian(v_it->radius, v_it->angle);            
+            distance_matrix[j][i] = calculate_euclidean_distance(v_pt, o_pt);
+            i++;
+        }
+    } 
+
+    std::vector<std::pair<wall_side_sensor_t, int>> registered_wall_sides;
+    for(int j = 0; j < data->wall_sides_count; j++)
+    { 
+        std::vector<double>::iterator result = std::min_element(std::begin(distance_matrix[j]), std::end(distance_matrix[j]));
+        int matched_side_idx = std::distance(std::begin(distance_matrix[j]), result);
+        std::pair<wall_side_sensor_t, int> temp(visible_sides[matched_side_idx] , j);
+        registered_wall_sides.push_back(temp);
+    }
+
+    return registered_wall_sides;
+}
+        
+double WallSides::calculate_euclidean_distance(point_t pt1, point_t pt2)
+{
+    return pow(pow(pt1.x - pt2.x,2) + pow(pt1.y - pt2.y,2),0.5);
+}
+
+// used for converting feature to cartesian point for ICP 
+point_t WallSides::polarToCartesian(double radius, double angle)
+{
+    point_t pt;
+    pt.x = radius * cos(angle);
+    pt.y = radius * sin(angle);
+    return pt;
+}
+
 // finds visible sides. Input sides should be in robot coordinate system
 // pass by reference
 // return true indicates side is visible
@@ -148,44 +191,58 @@ void WallSides::convertSideToSampleCoordinates(wall_side_sensor_t *side, pf_vect
 double WallSides::computeWeight(WallSidesData *data, pf_sample_t *sample)
 {
     std::vector<wall_side_sensor_t> visible_sides = getVisibleSides(sample->pose);
-    double weight = 0.0;
+    std::vector<std::pair<wall_side_sensor_t, int>> registered_sides = registerWallSides(visible_sides, data);
+    updateSampleFeatures(sample, registered_sides, data);     
 
-    for (auto visible_it = visible_sides.begin(); visible_it != visible_sides.end(); visible_it++)
+    double pz = 0.0; 
+    for (auto reg_it = registered_sides.begin(); reg_it != registered_sides.end(); reg_it++)
+    {  
+        double z = fabs(reg_it->first.radius - data->detected_wall_sides[reg_it->second].radius);
+ 
+        // Part 1: good, but noisy, hit
+        pz = pz + (z_hit_ * exp(-(z * z) / (2 * sigma_hit_ * sigma_hit_)));
+
+        // Part 2: short reading from unexpected obstacle (e.g., a person)
+        if(data->detected_wall_sides[reg_it->second].radius < sensor_range_min_)
+          pz = pz + z_short_ * lambda_short_ * exp(-lambda_short_*data->detected_wall_sides[reg_it->second].radius);
+
+        // Part 3: Failure to detect obstacle, reported as max-range
+        if(data->detected_wall_sides[reg_it->second].radius == z_max_)
+          pz = pz + z_max_ * 1.0;
+
+        // Part 4: Random measurements
+        if(data->detected_wall_sides[reg_it->second].radius < z_max_)
+          pz = pz + z_rand_ * 1.0/z_max_;
+    }
+    return pz;
+}
+
+bool WallSides::updateSampleFeatures(pf_sample_t *sample, std::vector<std::pair<wall_side_sensor_t, int>> registered_sides, WallSidesData *data)
+{
+    if ( registered_sides.size() > 0)
     {
-        double pz = 0.0;
-        for(int i = 0; i < data->wall_sides_count; i++)
-        {            
-            double z = fabs(visible_it->radius - data->detected_wall_sides[i].radius);
-
-            if (fabs(visible_it->angle) - 0.15 < fabs(data->detected_wall_sides[i].angle) < fabs(visible_it->angle) + 0.15)
-            {                
-                // Part 1: good, but noisy, hit
-                pz = pz + (z_hit_ * exp(-(z * z) / (2 * sigma_hit_ * sigma_hit_)));
-                // pz = pz + exp(-(z * z)/(2*M_PI*sigma_hit_));
+        point_t *tmp_expected_features = (point_t*)realloc(sample->expected_features, (sample->no_of_expected_features + registered_sides.size()) * sizeof(point_t));
+        point_t *tmp_registered_features = (point_t*)realloc(sample->registered_features, (sample->no_of_expected_features + registered_sides.size())* sizeof(point_t));
+        if (tmp_expected_features == NULL && tmp_registered_features == NULL)
+        {
+            return false;
+        }
+        else
+        {
+            sample->expected_features = tmp_expected_features;
+            sample->registered_features = tmp_registered_features; 
+            for(int i = 0; i < registered_sides.size(); i++)
+            {
+                sample->expected_features[sample->no_of_expected_features + i] = polarToCartesian(registered_sides[i].first.radius, registered_sides[i].first.angle);
+                sample->registered_features[sample->no_of_expected_features + i] = polarToCartesian(data->detected_wall_sides[registered_sides[i].second].radius, data->detected_wall_sides[registered_sides[i].second].angle);
             }
 
-            // Part 2: short reading from unexpected obstacle (e.g., a person)
-            if(data->detected_wall_sides[i].radius < sensor_range_min_)
-              pz = pz + z_short_ * lambda_short_ * exp(-lambda_short_*data->detected_wall_sides[i].radius);
-
-            // Part 3: Failure to detect obstacle, reported as max-range
-            if(data->detected_wall_sides[i].radius == z_max_)
-              pz = pz + z_max_ * 1.0;
-
-            // Part 4: Random measurements
-            if(data->detected_wall_sides[i].radius < z_max_)
-              pz = pz + z_rand_ * 1.0/z_max_;
-
-            // assert(pz <= 1.0);
-            // assert(pz >= 0.0);
-
-            // weight += pz*pz*pz;
-            pz += pz;
-
+            sample->no_of_expected_features = sample->no_of_expected_features  + registered_sides.size();
+            return true;
         }
-        weight = weight + pz;
     }
-    return weight;
+    else
+      return false;
 }
 
 double WallSides::computeWeights(WallSidesData *data, pf_sample_set_t* set)

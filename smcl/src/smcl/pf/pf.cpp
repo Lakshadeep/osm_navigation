@@ -30,9 +30,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "amcl/pf/pf.h"
-#include "amcl/pf/pf_pdf.h"
-#include "amcl/pf/pf_kdtree.h"
+#include "smcl/pf/pf.h"
+#include "smcl/pf/pf_pdf.h"
+#include "smcl/pf/pf_kdtree.h"
 
 
 // Compute the required number of samples, given that there are k bins
@@ -53,7 +53,7 @@ pf_t *pf_alloc(int min_samples, int max_samples,
   
   srand48(time(NULL));
 
-  pf = calloc(1, sizeof(pf_t));
+  pf = (pf_t*)calloc(1, sizeof(pf_t));
 
   pf->random_pose_fn = random_pose_fn;
   pf->random_pose_data = random_pose_data;
@@ -76,7 +76,7 @@ pf_t *pf_alloc(int min_samples, int max_samples,
     set = pf->sets + j;
       
     set->sample_count = max_samples;
-    set->samples = calloc(max_samples, sizeof(pf_sample_t));
+    set->samples = (pf_sample_t*)calloc(max_samples, sizeof(pf_sample_t));
 
     for (i = 0; i < set->sample_count; i++)
     {
@@ -95,7 +95,7 @@ pf_t *pf_alloc(int min_samples, int max_samples,
 
     set->cluster_count = 0;
     set->cluster_max_count = max_samples;
-    set->clusters = calloc(set->cluster_max_count, sizeof(pf_cluster_t));
+    set->clusters = (pf_cluster_t*)calloc(set->cluster_max_count, sizeof(pf_cluster_t));
 
     set->mean = pf_vector_zero();
     set->cov = pf_matrix_zero();
@@ -155,6 +155,7 @@ void pf_init(pf_t *pf, pf_vector_t mean, pf_matrix_t cov)
     sample = set->samples + i;
     sample->weight = 1.0 / pf->max_samples;
     sample->pose = pf_pdf_gaussian_sample(pdf);
+    sample->no_of_expected_features = 0;
 
     // Add sample to histogram
     pf_kdtree_insert(set->kdtree, sample->pose, sample->weight);
@@ -252,6 +253,18 @@ int pf_update_converged(pf_t *pf)
   return 1; 
 }
 
+void pf_free_samples_features(pf_sample_set_t *set)
+{
+  pf_sample_t *sample;
+  for (int i = 0; i < set->sample_count; i++)
+  {
+    sample = set->samples + i;
+    sample->no_of_expected_features = 0;
+    // free(sample->expected_features);
+    // free(sample->registered_features);
+  }
+}
+
 // Update the filter with some new action
 void pf_update_action(pf_t *pf, pf_action_model_fn_t action_fn, void *action_data)
 {
@@ -262,6 +275,74 @@ void pf_update_action(pf_t *pf, pf_action_model_fn_t action_fn, void *action_dat
   (*action_fn) (action_data, set);
   
   return;
+}
+
+
+void pf_re_orient_samples(pf_t *pf)
+{
+  pf_sample_set_t *set;
+  pf_sample_t *sample;
+  set = pf->sets + pf->current_set;
+
+  for (int i = 0; i < set->sample_count; i++)
+  {
+    sample = set->samples + i;
+    if (sample->no_of_expected_features > 1)
+    {
+      Eigen::Matrix<float, 2, Eigen::Dynamic> w1(2, sample->no_of_expected_features);
+      Eigen::Matrix<float, Eigen::Dynamic, 2> w2(sample->no_of_expected_features, 2);
+      // filling matrices with expected and registered points
+      for(int j = 0; j < sample->no_of_expected_features; j++)
+      {
+        w1(0,j) = sample->expected_features[j].x;
+        w1(1,j) = sample->expected_features[j].y;
+        w2(j,0) = sample->registered_features[j].x;
+        w2(j,1) = sample->registered_features[j].y;
+      }
+
+      // normalising w1 and w2 matrices
+      double w1_x = w1.row(0).mean();
+      double w1_y = w1.row(1).mean();
+
+      double w2_x = w2.col(0).mean();
+      double w2_y = w2.col(1).mean();
+
+      for(int j = 0; j < sample->no_of_expected_features; j++)
+      {
+        w1(0,j) = w1(0,j) - w1_x;
+        w1(1,j) = w1(1,j) - w1_y;
+
+        w2(j,0) = w2(j,0) - w2_x;
+        w2(j,1) = w2(j,1) - w2_y;
+      }
+      // std::cout << w1 << std::endl;
+      // std::cout << w2 << std::endl;
+      // matrix for computing SVD
+      Eigen::Matrix<float, 2, 2> W = w1*w2;
+      // compute SVD
+      Eigen::JacobiSVD<Eigen::Matrix<float, 2, 2 >> svd(W, Eigen::ComputeFullU | Eigen::ComputeFullV);
+      // compute rotation
+      Eigen::Matrix<float,2,2> R = svd.matrixU() * svd.matrixV().transpose();
+      // compute angle offset
+      // std::cout << R << std::endl;
+      double ang_offset = atan2(R(1,0), R(0,0));
+      // printf("X: %f | Y: %f | Angle: %f | Correction: %f | New: %f\n", sample->pose.v[0], sample->pose.v[1], sample->pose.v[2]*180.0/3.1457, ang_offset*180.0/3.1457, pi_to_pi(sample->pose.v[2] + ang_offset) * 180.0/3.1457);
+      if (ang_offset > 0)
+        sample->pose.v[2] = pi_to_pi(sample->pose.v[2] + 0.1);
+      else
+        sample->pose.v[2] = pi_to_pi(sample->pose.v[2] - 0.1);
+    }
+  }
+}
+
+double pi_to_pi(double angle)
+{
+  angle = fmod(angle, 2 * M_PI);
+  if (angle >= M_PI)
+    angle -= 2 * M_PI;
+  else if (angle <= -M_PI)
+    angle += 2 * M_PI;
+  return angle;
 }
 
 
@@ -465,7 +546,7 @@ void pf_update_resample(pf_t *pf)
   // Use the newly created sample set
   pf->current_set = (pf->current_set + 1) % 2; 
 
-  pf_update_converged(pf);
+  // pf_update_converged(pf);   // commented on Jan 5, 2019
 
   free(c);
   return;

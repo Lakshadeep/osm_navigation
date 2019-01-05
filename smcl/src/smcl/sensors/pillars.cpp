@@ -50,6 +50,51 @@ bool Pillars::UpdateSensor(pf_t *pf, SensorData *data)
     return true;
 }
 
+// registers visible pillars to observed using closest point approach
+std::vector<std::pair<pillar_sensor_t, int>> Pillars::registerPillars(std::vector<pillar_sensor_t> visible_pillars, PillarsData *data)
+{
+    std::vector<std::vector<double>> distance_matrix(data->pillars_count, std::vector<double>(expected_pillars_count));
+    for(int j = 0; j < data->pillars_count; j++)
+    {
+        int i = 0;
+        point_t o_pt = polarToCartesian(data->detected_pillars[j].radius, data->detected_pillars[j].angle);
+        for (auto v_it = visible_pillars.begin(); v_it != visible_pillars.end(); v_it++)
+        {
+            point_t v_pt = polarToCartesian(v_it->radius, v_it->angle);            
+            distance_matrix[j][i] = calculate_euclidean_distance(v_pt, o_pt);
+            i++;
+        }
+    } 
+    std::vector<std::pair<pillar_sensor_t, int>> registered_pillars;
+    if(visible_pillars.size() > 0)
+    {
+        for(int j = 0; j < data->pillars_count; j++)
+        { 
+            std::vector<double>::iterator result = std::min_element(std::begin(distance_matrix[j]), std::end(distance_matrix[j]));
+            ROS_INFO("D1.1");
+            int matched_pillar_idx = std::distance(std::begin(distance_matrix[j]), result);
+            std::pair<pillar_sensor_t, int> temp(visible_pillars[matched_pillar_idx] , j);
+            ROS_INFO("D1.2");
+            registered_pillars.push_back(temp);
+        }
+    }
+    return registered_pillars;
+}
+        
+double Pillars::calculate_euclidean_distance(point_t pt1, point_t pt2)
+{
+    return pow(pow(pt1.x - pt2.x,2) + pow(pt1.y - pt2.y,2),0.5);
+}
+
+// used for converting feature to cartesian point for ICP 
+point_t Pillars::polarToCartesian(double radius, double angle)
+{
+    point_t pt;
+    pt.x = radius * cos(angle);
+    pt.y = radius * sin(angle);
+    return pt;
+}
+
 // return all visible sides for given sample
 std::vector<pillar_sensor_t> Pillars::getVisiblePillars(pf_vector_t sample)
 {
@@ -72,7 +117,6 @@ bool Pillars::getVisiblePillar(pillar_sensor_t *pillar, pf_vector_t sample)
 
     pillar->angle = atan2(pillar->point.y, pillar->point.x);
     pillar->radius = pow(pow(pillar->point.x,2) + pow(pillar->point.y,2), 0.5);
-
     if (sensor_angular_range_start_ < pillar->angle < sensor_angular_range_end_)
     {        
         if (sensor_range_min_ < pillar->radius < sensor_range_max_)
@@ -93,44 +137,58 @@ point_t Pillars::globalToLocalTransformation(double ref_x, double ref_y, double 
 double Pillars::computeWeight(PillarsData *data, pf_sample_t *sample)
 {
     std::vector<pillar_sensor_t> visible_pillars = getVisiblePillars(sample->pose);
-    double weight = 0.0;
+    std::vector<std::pair<pillar_sensor_t, int>> registered_pillars = registerPillars(visible_pillars, data);
+    updateSampleFeatures(sample, registered_pillars, data);     
 
-    for (auto visible_it = visible_pillars.begin(); visible_it != visible_pillars.end(); visible_it++)
+    double pz = 0.0; 
+    for (auto reg_it = registered_pillars.begin(); reg_it != registered_pillars.end(); reg_it++)
+    {  
+        double z = fabs(reg_it->first.radius - data->detected_pillars[reg_it->second].radius);
+ 
+        // Part 1: good, but noisy, hit
+        pz = pz + (z_hit_ * exp(-(z * z) / (2 * sigma_hit_ * sigma_hit_)));
+
+        // Part 2: short reading from unexpected obstacle (e.g., a person)
+        if(data->detected_pillars[reg_it->second].radius < sensor_range_min_)
+          pz = pz + z_short_ * lambda_short_ * exp(-lambda_short_*data->detected_pillars[reg_it->second].radius);
+
+        // Part 3: Failure to detect obstacle, reported as max-range
+        if(data->detected_pillars[reg_it->second].radius == z_max_)
+          pz = pz + z_max_ * 1.0;
+
+        // Part 4: Random measurements
+        if(data->detected_pillars[reg_it->second].radius < z_max_)
+          pz = pz + z_rand_ * 1.0/z_max_;
+    }
+    return pz;
+}
+
+bool Pillars::updateSampleFeatures(pf_sample_t *sample, std::vector<std::pair<pillar_sensor_t, int>> registered_pillars, PillarsData *data)
+{
+    if ( registered_pillars.size() > 0)
     {
-        double pz = 0.0;
-        for(int i = 0; i < data->pillars_count; i++)
-        {            
-            double z = fabs(visible_it->radius - data->detected_pillars[i].radius);
-
-            if (fabs(visible_it->angle) - 0.15 < fabs(data->detected_pillars[i].angle) < fabs(visible_it->angle) + 0.15)
-            {                
-                // Part 1: good, but noisy, hit
-                pz = pz + (z_hit_ * exp(-(z * z) / (2 * sigma_hit_ * sigma_hit_)));
-                // pz = pz + exp(-(z * z)/(2*M_PI*sigma_hit_));
+        point_t *tmp_expected_features = (point_t*)realloc(sample->expected_features, (sample->no_of_expected_features + registered_pillars.size()) * sizeof(point_t));
+        point_t *tmp_registered_features = (point_t*)realloc(sample->registered_features, (sample->no_of_expected_features + registered_pillars.size())* sizeof(point_t));
+        if (tmp_expected_features == NULL && tmp_registered_features == NULL)
+        {
+            return false;
+        }
+        else
+        {
+            sample->expected_features = tmp_expected_features;
+            sample->registered_features = tmp_registered_features; 
+            for(int i = 0; i < registered_pillars.size(); i++)
+            {
+                sample->expected_features[sample->no_of_expected_features + i] = polarToCartesian(registered_pillars[i].first.radius, registered_pillars[i].first.angle);
+                sample->registered_features[sample->no_of_expected_features + i] = polarToCartesian(data->detected_pillars[registered_pillars[i].second].radius, data->detected_pillars[registered_pillars[i].second].angle);
             }
 
-            // Part 2: short reading from unexpected obstacle (e.g., a person)
-            if(data->detected_pillars[i].radius < sensor_range_min_)
-              pz = pz + z_short_ * lambda_short_ * exp(-lambda_short_*data->detected_pillars[i].radius);
-
-            // Part 3: Failure to detect obstacle, reported as max-range
-            if(data->detected_pillars[i].radius > z_max_)
-              pz = pz + z_max_ * 1.0;
-
-            // Part 4: Random measurements
-            if(data->detected_pillars[i].radius < z_max_)
-              pz = pz + z_rand_ * 1.0/z_max_;
-
-            // assert(pz <= 1.0);
-            // assert(pz >= 0.0);
-
-            // weight += pz*pz*pz;
-            pz += pz;
-
+            sample->no_of_expected_features = sample->no_of_expected_features  + registered_pillars.size();
+            return true;
         }
-        weight = weight + pz;
     }
-    return weight;
+    else
+      return false;
 }
 
 double Pillars::computeWeights(PillarsData *data, pf_sample_set_t* set)
@@ -140,7 +198,7 @@ double Pillars::computeWeights(PillarsData *data, pf_sample_set_t* set)
 
     // for(int i = 0; i < data->pillars_count; i++)
     // {
-    //     printf("$ObservedSide:%f,%f,%f,%f,%f,%f\n", data->detected_wall_sides[i].corner1.x, data->detected_wall_sides[i].corner1.y, data->detected_wall_sides[i].corner2.x, data->detected_wall_sides[i].corner2.y, data->detected_wall_sides[i].radius, data->detected_wall_sides[i].angle);
+    //     printf("$ObservedSide:%f,%f,%f,%f,%f,%f\n", data->detected_pillars[i].corner1.x, data->detected_pillars[i].corner1.y, data->detected_pillars[i].corner2.x, data->detected_pillars[i].corner2.y, data->detected_pillars[i].radius, data->detected_pillars[i].angle);
     // }
 
     double weight;

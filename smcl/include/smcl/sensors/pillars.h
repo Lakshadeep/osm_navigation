@@ -76,6 +76,12 @@ private:
     double computeWeight(PillarsData *data, pf_sample_t *sample);
     static double computeWeights(PillarsData *data, pf_sample_set_t *set);
 
+    // feature registration related functions
+    point_t polarToCartesian(double radius, double angle);
+    double calculate_euclidean_distance(point_t pt1, point_t pt2);
+    std::vector<std::pair<pillar_sensor_t, int>> registerPillars(std::vector<pillar_sensor_t> visible_pillars, PillarsData *data);
+    bool updateSampleFeatures(pf_sample_t *sample, std::vector<std::pair<pillar_sensor_t, int>> registered_sides, PillarsData *data);
+
 };
 
 #endif

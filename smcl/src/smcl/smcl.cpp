@@ -323,6 +323,8 @@ semantic_map_t* SMCL::convertMap( const osm_map_msgs::SemanticMap& semantic_map_
             pt.y = semantic_map_msg.pillars[i].shape.points[j].y;
             map->pillars[i].corners[j] = pt;
         }
+        map->pillars[i].point.x = semantic_map_msg.pillars[i].point.x; 
+        map->pillars[i].point.y = semantic_map_msg.pillars[i].point.y; 
     }
     return map;
 }
@@ -429,8 +431,13 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_ma
         if (update)
         {
             odom_->UpdateAction(pf_, (SensorData*)&odata);
+            pf_free_samples_features(pf_->sets + pf_->current_set);  // deletes samples observed previously
             wall_sides_->UpdateSensor(pf_, (SensorData*)&wsdata);
             pillars_->UpdateSensor(pf_, (SensorData*)&pdata);
+            if ((resample_count_ % 50) == 0)
+            { 
+                pf_re_orient_samples(pf_);
+            }
 
             pf_update_sensor_weights_and_params(pf_);
 
