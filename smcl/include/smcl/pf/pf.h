@@ -32,6 +32,10 @@
 #include "pf_kdtree.h"
 #include "../map/semantic_map.h"
 
+#include <Eigen/Dense>   // used for SVD computations
+#include <Eigen/SVD>
+
+#include <iostream>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -168,6 +172,8 @@ void pf_update_sensor_weights_and_params(pf_t *pf);
 void pf_free_samples_features(pf_sample_set_t *set);
 
 void pf_re_orient_samples(pf_t *pf);
+
+double pi_to_pi(double angle);
 
 // Resample the distribution
 void pf_update_resample(pf_t *pf);

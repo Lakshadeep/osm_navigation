@@ -429,8 +429,13 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_ma
         if (update)
         {
             odom_->UpdateAction(pf_, (SensorData*)&odata);
+            pf_free_samples_features(pf_->sets + pf_->current_set);  // deletes samples observed previously
             wall_sides_->UpdateSensor(pf_, (SensorData*)&wsdata);
-            pillars_->UpdateSensor(pf_, (SensorData*)&pdata);
+            // pillars_->UpdateSensor(pf_, (SensorData*)&pdata);
+            if ((resample_count_ % 10) == 0)
+            { 
+                pf_re_orient_samples(pf_);
+            }
 
             pf_update_sensor_weights_and_params(pf_);
 

@@ -70,28 +70,29 @@ std::vector<wall_side_sensor_t> WallSides::getVisibleSides(pf_vector_t sample)
 // registers visible sides to observed using closest point approach
 std::vector<std::pair<wall_side_sensor_t, int>> WallSides::registerWallSides(std::vector<wall_side_sensor_t> visible_sides, WallSidesData *data)
 {
-    std::vector<std::vector<double>> distance_matrix(expected_wall_sides_count, std::vector<double>(data->wall_sides_count));
+    std::vector<std::vector<double>> distance_matrix(data->wall_sides_count, std::vector<double>(expected_wall_sides_count));
     
-    int i = 0;
-    for (auto v_it = visible_sides.begin(); v_it != visible_sides.end(); v_it++)
+    for(int j = 0; j < data->wall_sides_count; j++)
     {
-        point_t v_pt = polarToCartesian(v_it->radius, v_it->angle);
-        for(int j = 0; j < data->wall_sides_count; j++)
+        int i = 0;
+        point_t o_pt = polarToCartesian(data->detected_wall_sides[j].radius, data->detected_wall_sides[j].angle);
+        for (auto v_it = visible_sides.begin(); v_it != visible_sides.end(); v_it++)
         {
-            point_t o_pt = polarToCartesian(data->detected_wall_sides[j].radius, data->detected_wall_sides[j].angle);
-            distance_matrix[i][j] = calculate_euclidean_distance(v_pt, o_pt);
+            point_t v_pt = polarToCartesian(v_it->radius, v_it->angle);            
+            distance_matrix[j][i] = calculate_euclidean_distance(v_pt, o_pt);
+            i++;
         }
-        i = i++;
     } 
 
-    i = 0;
     std::vector<std::pair<wall_side_sensor_t, int>> registered_wall_sides;
-    for (auto v_it = visible_sides.begin(); v_it != visible_sides.end(); v_it++)
+    for(int j = 0; j < data->wall_sides_count; j++)
     { 
-        int matched_side_idx = std::min_element(distance_matrix[i].begin(),distance_matrix[i].end()) - distance_matrix[i].begin();
-        std::pair<wall_side_sensor_t, int> temp(*v_it, matched_side_idx);
+        std::vector<double>::iterator result = std::min_element(std::begin(distance_matrix[j]), std::end(distance_matrix[j]));
+        int matched_side_idx = std::distance(std::begin(distance_matrix[j]), result);
+        std::pair<wall_side_sensor_t, int> temp(visible_sides[matched_side_idx] , j);
         registered_wall_sides.push_back(temp);
     }
+
     return registered_wall_sides;
 }
         
@@ -190,7 +191,6 @@ void WallSides::convertSideToSampleCoordinates(wall_side_sensor_t *side, pf_vect
 double WallSides::computeWeight(WallSidesData *data, pf_sample_t *sample)
 {
     std::vector<wall_side_sensor_t> visible_sides = getVisibleSides(sample->pose);
-
     std::vector<std::pair<wall_side_sensor_t, int>> registered_sides = registerWallSides(visible_sides, data);
     updateSampleFeatures(sample, registered_sides, data);     
 
@@ -219,26 +219,30 @@ double WallSides::computeWeight(WallSidesData *data, pf_sample_t *sample)
 
 bool WallSides::updateSampleFeatures(pf_sample_t *sample, std::vector<std::pair<wall_side_sensor_t, int>> registered_sides, WallSidesData *data)
 {
-    point_t *tmp_expected_features = (point_t*)realloc(sample->expected_features, (sample->no_of_expected_features + registered_sides.size()) * sizeof(point_t));
-    point_t *tmp_registered_features = (point_t*)realloc(sample->registered_features, (sample->no_of_expected_features + registered_sides.size())* sizeof(point_t));
-    if (tmp_expected_features == NULL && tmp_registered_features == NULL)
+    if ( registered_sides.size() > 0)
     {
-        ROS_INFO("I am dieing here: %d", registered_sides.size());
-        return false;
+        point_t *tmp_expected_features = (point_t*)realloc(sample->expected_features, (sample->no_of_expected_features + registered_sides.size()) * sizeof(point_t));
+        point_t *tmp_registered_features = (point_t*)realloc(sample->registered_features, (sample->no_of_expected_features + registered_sides.size())* sizeof(point_t));
+        if (tmp_expected_features == NULL && tmp_registered_features == NULL)
+        {
+            return false;
+        }
+        else
+        {
+            sample->expected_features = tmp_expected_features;
+            sample->registered_features = tmp_registered_features; 
+            for(int i = 0; i < registered_sides.size(); i++)
+            {
+                sample->expected_features[sample->no_of_expected_features + i] = polarToCartesian(registered_sides[i].first.radius, registered_sides[i].first.angle);
+                sample->registered_features[sample->no_of_expected_features + i] = polarToCartesian(data->detected_wall_sides[registered_sides[i].second].radius, data->detected_wall_sides[registered_sides[i].second].angle);
+            }
+
+            sample->no_of_expected_features = sample->no_of_expected_features  + registered_sides.size();
+            return true;
+        }
     }
     else
-    {
-        sample->expected_features = tmp_expected_features;
-        sample->registered_features = tmp_registered_features;
-
-        for(int i = 0; i < registered_sides.size(); i++)
-        {
-            sample->expected_features[sample->no_of_expected_features + i] = polarToCartesian(registered_sides[i].first.radius, registered_sides[i].first.angle);
-            sample->registered_features[sample->no_of_expected_features + i] = polarToCartesian(data->detected_wall_sides[registered_sides[i].second].radius, data->detected_wall_sides[registered_sides[i].second].angle);
-        }
-        sample->no_of_expected_features = sample->no_of_expected_features  + registered_sides.size();
-        return true;
-    }
+      return false;
 }
 
 double WallSides::computeWeights(WallSidesData *data, pf_sample_set_t* set)
