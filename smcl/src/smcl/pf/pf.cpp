@@ -326,8 +326,11 @@ void pf_re_orient_samples(pf_t *pf)
       // compute angle offset
       // std::cout << R << std::endl;
       double ang_offset = atan2(R(1,0), R(0,0));
-      // printf("Angle: %f | Correction: %f\n", sample->pose.v[2]*180.0/3.1457, ang_offset*180.0/3.1457);
-      sample->pose.v[2] = pi_to_pi(sample->pose.v[2] + ang_offset);
+      // printf("X: %f | Y: %f | Angle: %f | Correction: %f | New: %f\n", sample->pose.v[0], sample->pose.v[1], sample->pose.v[2]*180.0/3.1457, ang_offset*180.0/3.1457, pi_to_pi(sample->pose.v[2] + ang_offset) * 180.0/3.1457);
+      if (ang_offset > 0)
+        sample->pose.v[2] = pi_to_pi(sample->pose.v[2] + 0.1);
+      else
+        sample->pose.v[2] = pi_to_pi(sample->pose.v[2] - 0.1);
     }
   }
 }
@@ -337,6 +340,8 @@ double pi_to_pi(double angle)
   angle = fmod(angle, 2 * M_PI);
   if (angle >= M_PI)
     angle -= 2 * M_PI;
+  else if (angle <= -M_PI)
+    angle += 2 * M_PI;
   return angle;
 }
 
@@ -541,7 +546,7 @@ void pf_update_resample(pf_t *pf)
   // Use the newly created sample set
   pf->current_set = (pf->current_set + 1) % 2; 
 
-  pf_update_converged(pf);
+  // pf_update_converged(pf);   // commented on Jan 5, 2019
 
   free(c);
   return;
