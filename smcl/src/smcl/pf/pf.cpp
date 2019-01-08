@@ -417,6 +417,88 @@ void pf_update_sensor_weights_and_params(pf_t *pf)
   return;
 }
 
+void pf_update_resample_semantic(pf_t *pf)
+{
+  int i;
+  double total;
+  pf_sample_set_t *set_a, *set_b;
+  pf_sample_t *sample_a, *sample_b;
+  double epsilon = 0.0000001;
+
+  int no_of_particles_above_avg = 0;
+
+  set_a = pf->sets + pf->current_set;
+  set_b = pf->sets + (pf->current_set + 1) % 2;
+
+  set_b->sample_count = 0;
+  double w_avg = 0;
+  for(int i=0; i<set_a->sample_count; i++)
+  {
+    w_avg = w_avg + set_a->samples[i].weight;
+  }
+  w_avg = w_avg/set_a->sample_count;
+  printf("Wavg: %f\n", w_avg);
+
+  pf_kdtree_clear(set_b->kdtree);
+
+  for(int i=0; i<set_a->sample_count; i++)
+  {
+    if (set_a->samples[i].weight >= (1.0/pf->max_samples) - epsilon)
+    {
+      sample_b = set_b->samples + set_b->sample_count++;
+      sample_b->pose = set_a->samples[i].pose;
+      sample_b->weight = 1.0;
+      total += sample_b->weight;
+      no_of_particles_above_avg++;
+      pf_kdtree_insert(set_b->kdtree, sample_b->pose, sample_b->weight);
+    }
+  }
+  printf("No of particles above avg: %d\n", no_of_particles_above_avg);
+
+  pf_cluster_stats(pf, set_b);
+
+  double* c;
+  c = (double*)malloc(sizeof(double)*(set_a->sample_count+1));
+  c[0] = 0.0;
+  for(i=0;i<set_a->sample_count;i++)
+    c[i+1] = c[i]+set_a->samples[i].weight;
+
+  int new_particles = (int)pf->max_samples/10;
+  if( pf->max_samples - no_of_particles_above_avg < new_particles)
+      new_particles = pf->max_samples - no_of_particles_above_avg;
+
+  for(int j = 0; j < new_particles; j++)
+  {
+    // Naive discrete event sampler
+    double r;
+    r = drand48();
+    for(i=0;i<set_a->sample_count;i++)
+    {
+      if((c[i] <= r) && (r < c[i+1]))
+        break;
+    }
+    assert(i<set_a->sample_count);
+
+    sample_a = set_a->samples + i + 1;
+
+    assert(sample_a->weight > 0);
+    sample_b = set_b->samples + set_b->sample_count++;
+    sample_b->pose = sample_a->pose;
+    sample_b->weight = 1.0;
+  }
+
+  // Normalize weights
+  for (i = 0; i < set_b->sample_count; i++)
+  {
+    sample_b = set_b->samples + i;
+    sample_b->weight /= total;
+  }
+
+  pf->current_set = (pf->current_set + 1) % 2; 
+  return;
+}
+
+
 
 // Resample the distribution
 void pf_update_resample(pf_t *pf)
@@ -665,7 +747,7 @@ void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set)
         c[j][k] += sample->weight * sample->pose.v[j] * sample->pose.v[k];
       }
   }
-
+  printf("Cluster count: %d\n", set->cluster_count);
   // Normalize
   for (i = 0; i < set->cluster_count; i++)
   {

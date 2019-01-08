@@ -178,6 +178,8 @@ double pi_to_pi(double angle);
 // Resample the distribution
 void pf_update_resample(pf_t *pf);
 
+void pf_update_resample_semantic(pf_t *pf);
+
 // Compute the CEP statistics (mean and variance).
 void pf_get_cep_stats(pf_t *pf, pf_vector_t *mean, double *var);
 

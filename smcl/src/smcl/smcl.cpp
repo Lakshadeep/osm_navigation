@@ -444,7 +444,7 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_ma
             // Resample the particles
             if ((resample_count_ % 10) == 0)
             { 
-                pf_update_resample(pf_);
+                pf_update_resample_semantic(pf_);
             }
 
             pf_sample_set_t* set = pf_->sets;
