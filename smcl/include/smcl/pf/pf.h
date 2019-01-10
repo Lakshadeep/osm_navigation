@@ -32,8 +32,8 @@
 #include "pf_kdtree.h"
 #include "../map/semantic_map.h"
 
-#include <Eigen/Dense>   // used for SVD computations
-#include <Eigen/SVD>
+#include <eigen3/Eigen/Dense>   // used for SVD computations
+#include <eigen3/Eigen/SVD>
 
 #include <iostream>
 #ifdef __cplusplus
