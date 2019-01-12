@@ -435,7 +435,7 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
             wall_sides_->UpdateSensor(pf_, (SensorData*)&wsdata);
             pillars_->UpdateSensor(pf_, (SensorData*)&pdata);
 
-            if ((resample_count_ % 50) == 0)
+            if ((resample_count_ % 10) == 0)
             { 
                 pf_re_orient_samples(pf_);
             }
@@ -531,6 +531,7 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
                 q.setRPY(0, 0, hyps[max_weight_hyp].pf_pose_mean.v[2]);
                 transform.setRotation(q);
                 br_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), global_frame_id_, base_frame_id_));
+                pose_pub_.publish(p);
             }
             resample_count_ = resample_count_ + 1;
         }

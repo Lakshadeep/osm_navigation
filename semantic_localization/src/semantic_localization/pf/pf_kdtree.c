@@ -48,18 +48,6 @@ static pf_kdtree_node_t *pf_kdtree_find_node(pf_kdtree_t *self, pf_kdtree_node_t
 // Recursively label nodes in this cluster
 static void pf_kdtree_cluster_node(pf_kdtree_t *self, pf_kdtree_node_t *node, int depth);
 
-// Recursive node printing
-//static void pf_kdtree_print_node(pf_kdtree_t *self, pf_kdtree_node_t *node);
-
-
-#ifdef INCLUDE_RTKGUI
-
-// Recursively draw nodes
-static void pf_kdtree_draw_node(pf_kdtree_t *self, pf_kdtree_node_t *node, rtk_fig_t *fig);
-
-#endif
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Create a tree
