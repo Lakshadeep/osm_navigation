@@ -24,7 +24,7 @@
 #include <sys/types.h> // required by Darwin
 #include <math.h>
 
-#include "smcl/sensors/odom.h"
+#include "semantic_localization/sensors/odom.h"
 
 static double normalize(double z)
 {

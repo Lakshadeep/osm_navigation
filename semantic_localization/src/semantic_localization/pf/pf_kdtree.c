@@ -31,8 +31,8 @@
 #include <string.h>
 
 
-#include "smcl/pf/pf_vector.h"
-#include "smcl/pf/pf_kdtree.h"
+#include "semantic_localization/pf/pf_vector.h"
+#include "semantic_localization/pf/pf_kdtree.h"
 
 
 // Compare keys to see if they are equal

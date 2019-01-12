@@ -1,4 +1,4 @@
-#include "smcl/sensors/wall_sides.h"
+#include "semantic_localization/sensors/wall_sides.h"
 #include "ros/ros.h"
 
 WallSides::WallSides()

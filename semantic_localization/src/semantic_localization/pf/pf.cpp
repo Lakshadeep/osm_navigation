@@ -30,9 +30,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "smcl/pf/pf.h"
-#include "smcl/pf/pf_pdf.h"
-#include "smcl/pf/pf_kdtree.h"
+#include "semantic_localization/pf/pf.h"
+#include "semantic_localization/pf/pf_pdf.h"
+#include "semantic_localization/pf/pf_kdtree.h"
 
 
 // Compute the required number of samples, given that there are k bins

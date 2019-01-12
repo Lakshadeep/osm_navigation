@@ -32,7 +32,7 @@
 //#include <gsl/gsl_rng.h>
 //#include <gsl/gsl_randist.h>
 
-#include "amcl/pf/pf_pdf.h"
+#include "semantic_localization/pf/pf_pdf.h"
 
 // Random number generator seed value
 static unsigned int pf_pdf_seed;

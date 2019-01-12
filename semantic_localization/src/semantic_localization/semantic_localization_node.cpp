@@ -1,25 +1,25 @@
-#include "smcl/smcl.h"
+#include "semantic_localization/semantic_localization.h"
 
-boost::shared_ptr<SMCL> smcl_ptr;
+boost::shared_ptr<SemanticLocalization> sl_ptr;
 
 void sigintHandler(int sig)
 {
     // Save latest pose as we're shutting down.
-    smcl_ptr->savePoseToServer();
-    smcl_ptr.reset();
+    sl_ptr->savePoseToServer();
+    sl_ptr.reset();
     ros::shutdown();
 }
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "smcl");
+    ros::init(argc, argv, "semantic_localization");
     ros::NodeHandle nh;
 
     // Override default sigint handler
     signal(SIGINT, sigintHandler);
 
     // Make our node available to sigintHandler
-    smcl_ptr.reset(new SMCL());
+    sl_ptr.reset(new SemanticLocalization());
 
     if (argc == 1)
     {
@@ -28,7 +28,7 @@ int main(int argc, char** argv)
     }
 
     // Without this, our boost locks are not shut down nicely
-    smcl_ptr.reset();
+    sl_ptr.reset();
 
     // To quote Morgan, Hooray!
     return (0);

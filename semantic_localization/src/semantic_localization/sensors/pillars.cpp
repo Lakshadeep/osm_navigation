@@ -1,4 +1,4 @@
-#include "smcl/sensors/pillars.h"
+#include "semantic_localization/sensors/pillars.h"
 #include "ros/ros.h"
 
 Pillars::Pillars()

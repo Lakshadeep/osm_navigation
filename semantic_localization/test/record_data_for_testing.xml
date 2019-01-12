@@ -10,7 +10,7 @@
 
     <include file="$(find semantic_feature_detection)/launch/semantic_feature_detection.launch" />
 
-    <node name="rosbag" pkg="rosbag" type="record"  args="record -o $(find smcl)/test/data/ /ropod/odom /ropod/imu_data /ropod/cmd_vel /semantic_features_detected /semantic_map /geometric_map /semantic_map_markers /geometric_map_markers /clock"/>
+    <node name="rosbag" pkg="rosbag" type="record"  args="record -o $(find semantic_localization)/test/data/ /ropod/odom /ropod/imu_data /ropod/cmd_vel /semantic_features_detected /semantic_map /geometric_map /semantic_map_markers /geometric_map_markers /clock"/>
     
     <include file="$(find ropod_gazebo)/launch/ropod_sim.launch" />
     <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui"/>

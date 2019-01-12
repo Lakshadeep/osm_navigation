@@ -44,7 +44,7 @@ start_position:
 destination_task: ''
 ```
 
-## Semantic Monte Carlo Localization (SMCL)
+## Semantic Localization
 Implements MCL using semantic features modelled in OSM world model. Assumes that robot position is known at area level and then use semantic features obtained from semantic map of an area for localization.
 
 #### Subscribed topics
