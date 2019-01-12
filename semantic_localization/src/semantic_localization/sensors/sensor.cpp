@@ -19,7 +19,7 @@
  *
  */
 
-#include "smcl/sensors/sensor.h"
+#include "semantic_localization/sensors/sensor.h"
 
 // Default constructor
 Sensor::Sensor()

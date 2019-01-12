@@ -1,6 +1,6 @@
-#include "smcl/smcl.h"
+#include "semantic_localization/semantic_localization.h"
 
-SMCL::SMCL() : semantic_map_(NULL), pf_(NULL), resample_count_(0), odom_(NULL), private_nh_("~"), initial_pose_hyp_(NULL)
+SemanticLocalization::SemanticLocalization() : semantic_map_(NULL), pf_(NULL), resample_count_(0), odom_(NULL), private_nh_("~"), initial_pose_hyp_(NULL)
 {
     boost::recursive_mutex::scoped_lock l(configuration_mutex_);
 
@@ -80,24 +80,24 @@ SMCL::SMCL() : semantic_map_(NULL), pf_(NULL), resample_count_(0), odom_(NULL), 
 
     cloud_pub_interval.fromSec(1.0);
 
-    pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("smcl_pose", 2, true);
+    pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("sl_pose", 2, true);
     particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
-    global_loc_srv_ = nh_.advertiseService("global_localization", &SMCL::globalLocalizationCallback, this);
-    nomotion_update_srv_ = nh_.advertiseService("request_nomotion_update", &SMCL::nomotionUpdateCallback, this);
-    semantic_features_sub_ = nh_.subscribe(semantic_features_topic_, 10, &SMCL::semanticFeaturesReceived, this);
-    odom_sub_ = nh_.subscribe(odom_topic_, 10, &SMCL::odomReceived, this);
-    initial_pose_sub_ = nh_.subscribe("initialpose", 2, &SMCL::initialPoseReceived, this);
-    semantic_map_sub_ = nh_.subscribe(semantic_map_topic_, 1, &SMCL::mapReceived, this);
+    global_loc_srv_ = nh_.advertiseService("global_localization", &SemanticLocalization::globalLocalizationCallback, this);
+    nomotion_update_srv_ = nh_.advertiseService("request_nomotion_update", &SemanticLocalization::nomotionUpdateCallback, this);
+    semantic_features_sub_ = nh_.subscribe(semantic_features_topic_, 10, &SemanticLocalization::semanticFeaturesReceived, this);
+    odom_sub_ = nh_.subscribe(odom_topic_, 10, &SemanticLocalization::odomReceived, this);
+    initial_pose_sub_ = nh_.subscribe("initialpose", 2, &SemanticLocalization::initialPoseReceived, this);
+    semantic_map_sub_ = nh_.subscribe(semantic_map_topic_, 1, &SemanticLocalization::mapReceived, this);
     ROS_INFO("Subscribed to map topic.");
 
     m_force_update = false;
 
     semantic_features_check_interval_ = ros::Duration(15.0);
     check_semantic_features_timer_ = nh_.createTimer(semantic_features_check_interval_,
-                                     boost::bind(&SMCL::checkSemanticFeaturesReceived, this, _1));
+                                     boost::bind(&SemanticLocalization::checkSemanticFeaturesReceived, this, _1));
 }
 
-void SMCL::updatePoseFromServer()
+void SemanticLocalization::updatePoseFromServer()
 {
     init_pose_[0] = 0.0;
     init_pose_[1] = 0.0;
@@ -139,7 +139,7 @@ void SMCL::updatePoseFromServer()
         ROS_WARN("ignoring NAN in initial covariance AA");
 }
 
-void SMCL::savePoseToServer()
+void SemanticLocalization::savePoseToServer()
 {
     double roll, pitch, yaw;
     tf::Quaternion quat;
@@ -153,7 +153,7 @@ void SMCL::savePoseToServer()
     private_nh_.setParam("initial_cov_aa", last_published_pose.pose.covariance[6 * 5 + 5]);
 }
 
-void SMCL::checkSemanticFeaturesReceived(const ros::TimerEvent& event)
+void SemanticLocalization::checkSemanticFeaturesReceived(const ros::TimerEvent& event)
 {
     ros::Duration d = ros::Time::now() - last_semantic_features_received_ts_;
     if (d > semantic_features_check_interval_)
@@ -162,12 +162,12 @@ void SMCL::checkSemanticFeaturesReceived(const ros::TimerEvent& event)
     }
 }
 
-void SMCL::mapReceived(const osm_map_msgs::SemanticMapConstPtr& msg)
+void SemanticLocalization::mapReceived(const osm_map_msgs::SemanticMapConstPtr& msg)
 {
     handleMapMessage( *msg );
 }
 
-void SMCL::handleMapMessage(const osm_map_msgs::SemanticMap& msg)
+void SemanticLocalization::handleMapMessage(const osm_map_msgs::SemanticMap& msg)
 {
     boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
 
@@ -179,13 +179,13 @@ void SMCL::handleMapMessage(const osm_map_msgs::SemanticMap& msg)
 
     ROS_INFO("Semantic map successfully converted");
     // Create the particle filter
-    pf_ = pf_alloc(min_particles_, max_particles_, alpha_slow_, alpha_fast_, (pf_init_model_fn_t)SMCL::uniformPoseGenerator, (void *)semantic_map_);
+    pf_ = pf_alloc(min_particles_, max_particles_, alpha_slow_, alpha_fast_, (pf_init_model_fn_t)SemanticLocalization::uniformPoseGenerator, (void *)semantic_map_);
     pf_->pop_err = pf_err_;
     pf_->pop_z = pf_z_;
 
     ROS_INFO("Particle filter intiialized");
 
-    pf_init_model(pf_, (pf_init_model_fn_t)SMCL::uniformPoseGenerator, (void *)semantic_map_);
+    pf_init_model(pf_, (pf_init_model_fn_t)SemanticLocalization::uniformPoseGenerator, (void *)semantic_map_);
     pf_init_ = false;
 
     pf_sample_set_t* set = pf_->sets;
@@ -223,7 +223,7 @@ void SMCL::handleMapMessage(const osm_map_msgs::SemanticMap& msg)
     applyInitialPose();
 }
 
-void SMCL::freeMapDependentMemory()
+void SemanticLocalization::freeMapDependentMemory()
 {
     if ( semantic_map_ != NULL ) {
         semantic_map_free( semantic_map_ );
@@ -241,7 +241,7 @@ void SMCL::freeMapDependentMemory()
  * Convert an Semantic map message into the internal
  * representation.  This allocates a semantic_map_t and returns it.
  */
-semantic_map_t* SMCL::convertMap( const osm_map_msgs::SemanticMap& semantic_map_msg)
+semantic_map_t* SemanticLocalization::convertMap( const osm_map_msgs::SemanticMap& semantic_map_msg)
 {
     semantic_map_t* map = semantic_map_alloc();
     ROS_ASSERT(map);
@@ -330,13 +330,13 @@ semantic_map_t* SMCL::convertMap( const osm_map_msgs::SemanticMap& semantic_map_
 }
 
 
-SMCL::~SMCL()
+SemanticLocalization::~SemanticLocalization()
 {
     freeMapDependentMemory();
     // TODO: delete everything allocated in constructor
 }
 
-pf_vector_t SMCL::uniformPoseGenerator(void* arg)
+pf_vector_t SemanticLocalization::uniformPoseGenerator(void* arg)
 {
     semantic_map_t* map = (semantic_map_t*)arg;
     pf_vector_t p;
@@ -350,7 +350,7 @@ pf_vector_t SMCL::uniformPoseGenerator(void* arg)
 }
 
 
-void SMCL::odomReceived(const nav_msgs::OdometryConstPtr& odom_msg)
+void SemanticLocalization::odomReceived(const nav_msgs::OdometryConstPtr& odom_msg)
 {
     updated_odom_pose_.v[0] = odom_msg->pose.pose.position.x;
     updated_odom_pose_.v[1] = odom_msg->pose.pose.position.y;
@@ -363,7 +363,7 @@ void SMCL::odomReceived(const nav_msgs::OdometryConstPtr& odom_msg)
     updated_odom_pose_.v[2] = yaw;
 }
 
-void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_map)
+void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_map)
 {
     last_semantic_features_received_ts_ = ros::Time::now();
     if ( semantic_map_ == NULL ) 
@@ -434,17 +434,16 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_ma
             pf_free_samples_features(pf_->sets + pf_->current_set);  // deletes samples observed previously
             wall_sides_->UpdateSensor(pf_, (SensorData*)&wsdata);
             pillars_->UpdateSensor(pf_, (SensorData*)&pdata);
-            if ((resample_count_ % 50) == 0)
+
+            if ((resample_count_ % 10) == 0)
             { 
                 pf_re_orient_samples(pf_);
             }
-
             pf_update_sensor_weights_and_params(pf_);
-
             // Resample the particles
             if ((resample_count_ % 10) == 0)
             { 
-                pf_update_resample(pf_);
+                pf_update_resample_semantic(pf_);
             }
 
             pf_sample_set_t* set = pf_->sets;
@@ -466,7 +465,7 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_ma
 
             double max_weight = 0.0;
             int max_weight_hyp = -1;
-            std::vector<smcl_hyp_t> hyps;
+            std::vector<sl_hyp_t> hyps;
             hyps.resize(pf_->sets[pf_->current_set].cluster_count);
             for (int hyp_count = 0;
                 hyp_count < pf_->sets[pf_->current_set].cluster_count; hyp_count++)
@@ -532,6 +531,7 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_ma
                 q.setRPY(0, 0, hyps[max_weight_hyp].pf_pose_mean.v[2]);
                 transform.setRotation(q);
                 br_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), global_frame_id_, base_frame_id_));
+                pose_pub_.publish(p);
             }
             resample_count_ = resample_count_ + 1;
         }
@@ -547,12 +547,12 @@ void SMCL::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_ma
     }
 }
 
-void SMCL::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
+void SemanticLocalization::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
 {
     handleInitialPoseMessage(*msg);
 }
 
-void SMCL::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& msg)
+void SemanticLocalization::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& msg)
 {
     double roll, pitch, yaw;
     tf::Quaternion quat;
@@ -578,7 +578,7 @@ void SMCL::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamp
     pf_init_pose_cov.m[2][2] = msg.pose.covariance[6 * 5 + 5];
 
     delete initial_pose_hyp_;
-    initial_pose_hyp_ = new smcl_hyp_t();
+    initial_pose_hyp_ = new sl_hyp_t();
     initial_pose_hyp_->pf_pose_mean = pf_init_pose_mean;
     initial_pose_hyp_->pf_pose_cov = pf_init_pose_cov;
     applyInitialPose();
@@ -589,7 +589,7 @@ void SMCL::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamp
  * pose to the particle filter state.  initial_pose_hyp_ is deleted
  * and set to NULL after it is used.
  */
-void SMCL::applyInitialPose()
+void SemanticLocalization::applyInitialPose()
 {
     boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
     if ( initial_pose_hyp_ != NULL && semantic_map_ != NULL ) {
@@ -601,21 +601,21 @@ void SMCL::applyInitialPose()
     }
 }
 
-bool SMCL::globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+bool SemanticLocalization::globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
 {
     if ( semantic_map_ == NULL ) {
         return true;
     }
     boost::recursive_mutex::scoped_lock gl(configuration_mutex_);
     ROS_INFO("Initializing with uniform distribution");
-    pf_init_model(pf_, (pf_init_model_fn_t)SMCL::uniformPoseGenerator, (void *)semantic_map_);
+    pf_init_model(pf_, (pf_init_model_fn_t)SemanticLocalization::uniformPoseGenerator, (void *)semantic_map_);
     ROS_INFO("Global initialisation done!");
     pf_init_ = false;
     return true;
 }
 
-// force nomotion updates (smcl updating without requiring motion)
-bool SMCL::nomotionUpdateCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+// force nomotion updates (sl updating without requiring motion)
+bool SemanticLocalization::nomotionUpdateCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
 {
     m_force_update = true;
     return true;

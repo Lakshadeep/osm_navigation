@@ -10,12 +10,12 @@
 // Signal handling
 #include <signal.h>
 
-// SMCL
-#include "smcl/map/semantic_map.h"
-#include "smcl/pf/pf.h"
-#include "smcl/sensors/odom.h"
-#include "smcl/sensors/wall_sides.h"
-#include "smcl/sensors/pillars.h"
+// SemanticLocalization
+#include "semantic_localization/map/semantic_map.h"
+#include "semantic_localization/pf/pf.h"
+#include "semantic_localization/sensors/odom.h"
+#include "semantic_localization/sensors/wall_sides.h"
+#include "semantic_localization/sensors/pillars.h"
 
 // roscpp
 #include "ros/assert.h"
@@ -43,7 +43,7 @@ typedef struct
     pf_vector_t pf_pose_mean;     // Mean of pose esimate
     pf_matrix_t pf_pose_cov;      // Covariance of pose estimate
 
-} smcl_hyp_t;
+} sl_hyp_t;
 
 static double normalize(double z)
 {
@@ -67,11 +67,11 @@ static double angle_diff(double a, double b)
 
 
 
-class SMCL
+class SemanticLocalization
 {
 public:
-    SMCL();
-    ~SMCL();
+    SemanticLocalization();
+    ~SemanticLocalization();
     int process();
     void savePoseToServer();
 
@@ -171,7 +171,7 @@ private:
     ros::Publisher pose_pub_;
     ros::Publisher particlecloud_pub_;
     ros::ServiceServer global_loc_srv_;
-    ros::ServiceServer nomotion_update_srv_; //to let smcl update samples without requiring motion
+    ros::ServiceServer nomotion_update_srv_; //to let sl update samples without requiring motion
     ros::ServiceServer set_map_srv_;
     ros::Subscriber initial_pose_sub_old_;
     ros::Subscriber semantic_features_sub_;
@@ -179,7 +179,7 @@ private:
     ros::Subscriber initial_pose_sub_;
     ros::Subscriber semantic_map_sub_;
 
-    smcl_hyp_t* initial_pose_hyp_;
+    sl_hyp_t* initial_pose_hyp_;
     bool first_map_received_;
     bool first_reconfigure_call_;
 };

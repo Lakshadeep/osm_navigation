@@ -30,9 +30,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "smcl/pf/pf.h"
-#include "smcl/pf/pf_pdf.h"
-#include "smcl/pf/pf_kdtree.h"
+#include "semantic_localization/pf/pf.h"
+#include "semantic_localization/pf/pf_pdf.h"
+#include "semantic_localization/pf/pf_kdtree.h"
 
 
 // Compute the required number of samples, given that there are k bins
@@ -417,6 +417,79 @@ void pf_update_sensor_weights_and_params(pf_t *pf)
   return;
 }
 
+void pf_update_resample_semantic(pf_t *pf)
+{
+  int i;
+  double total;
+  pf_sample_set_t *set_a, *set_b;
+  pf_sample_t *sample_a, *sample_b;
+  double epsilon = 0.0000001;
+
+  int no_of_particles_above_avg = 0;
+
+  set_a = pf->sets + pf->current_set;
+  set_b = pf->sets + (pf->current_set + 1) % 2;
+
+  set_b->sample_count = 0;
+  double w_avg = 0;
+  for(int i=0; i<set_a->sample_count; i++)
+  {
+    w_avg = w_avg + set_a->samples[i].weight;
+  }
+
+  w_avg = w_avg/set_a->sample_count;
+  printf("Wavg: %f\n", w_avg);
+
+  pf_kdtree_clear(set_b->kdtree);
+
+  for(int i=0; i<set_a->sample_count; i++)
+  {
+    if (set_a->samples[i].weight >= (1.0/pf->max_samples) - epsilon)
+    {
+      sample_b = set_b->samples + set_b->sample_count++;
+      sample_b->pose = set_a->samples[i].pose;
+      sample_b->weight = set_a->samples[i].weight;
+      total += sample_b->weight;
+      no_of_particles_above_avg++;
+      pf_kdtree_insert(set_b->kdtree, sample_b->pose, sample_b->weight);
+    }
+  }
+  printf("No of particles above avg: %d\n", no_of_particles_above_avg);
+
+  pf_cluster_stats(pf, set_b);
+
+  // Observation: this is resulting in lot of hypothesis going outside the room
+  ////////////////////////////////////////////////////////////////////////////
+  // int new_particles = (int)pf->max_samples/5;
+  // if( pf->max_samples - no_of_particles_above_avg < new_particles)
+  //     new_particles = pf->max_samples - no_of_particles_above_avg;
+
+  // int current_cluster = 0;
+  // for(int i = 0; i < new_particles; i++)
+  // {
+  //   current_cluster = current_cluster % set_b->cluster_count;
+  //   sample_b = set_b->samples + set_b->sample_count++;
+  //   sample_b->pose.v[0] = 0.9*set_b->clusters[current_cluster].mean.v[0] + 0.1*drand48();
+  //   sample_b->pose.v[1] = 0.9*set_b->clusters[current_cluster].mean.v[1] + 0.1*drand48();
+  //   sample_b->pose.v[2] = 0.9*set_b->clusters[current_cluster].mean.v[2] + 0.1*drand48();
+  //   sample_b->weight = 0.5/pf->max_samples;
+  //   current_cluster++;
+  // }
+  ////////////////////////////////////////////////////////////////////////////
+
+  // Normalize weights
+  for (i = 0; i < set_b->sample_count; i++)
+  {
+    sample_b = set_b->samples + i;
+    sample_b->weight /= total;
+  }
+
+  pf->current_set = (pf->current_set + 1) % 2; 
+
+  return;
+}
+
+
 
 // Resample the distribution
 void pf_update_resample(pf_t *pf)
@@ -665,7 +738,7 @@ void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set)
         c[j][k] += sample->weight * sample->pose.v[j] * sample->pose.v[k];
       }
   }
-
+  printf("Cluster count: %d\n", set->cluster_count);
   // Normalize
   for (i = 0; i < set->cluster_count; i++)
   {

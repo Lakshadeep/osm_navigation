@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "smcl/map/semantic_map.h"
+#include "semantic_localization/map/semantic_map.h"
 
 
 // Create a new map

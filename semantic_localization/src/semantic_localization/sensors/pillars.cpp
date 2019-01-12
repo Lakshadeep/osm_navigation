@@ -1,4 +1,4 @@
-#include "smcl/sensors/pillars.h"
+#include "semantic_localization/sensors/pillars.h"
 #include "ros/ros.h"
 
 Pillars::Pillars()
@@ -71,11 +71,12 @@ std::vector<std::pair<pillar_sensor_t, int>> Pillars::registerPillars(std::vecto
         for(int j = 0; j < data->pillars_count; j++)
         { 
             std::vector<double>::iterator result = std::min_element(std::begin(distance_matrix[j]), std::end(distance_matrix[j]));
-            ROS_INFO("D1.1");
             int matched_pillar_idx = std::distance(std::begin(distance_matrix[j]), result);
-            std::pair<pillar_sensor_t, int> temp(visible_pillars[matched_pillar_idx] , j);
-            ROS_INFO("D1.2");
-            registered_pillars.push_back(temp);
+            if (distance_matrix[j][matched_pillar_idx] < 2.0)
+            {
+                std::pair<pillar_sensor_t, int> temp(visible_pillars[matched_pillar_idx] , j);
+                registered_pillars.push_back(temp);
+            }
         }
     }
     return registered_pillars;

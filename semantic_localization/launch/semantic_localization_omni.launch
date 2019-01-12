@@ -1,5 +1,5 @@
 <launch>
-    <node pkg="smcl" type="smcl_node" name="smcl_node" output="screen">
+    <node pkg="semantic_localization" type="semantic_localization_node" name="semantic_localization_node" output="screen">
         <param name="odom_model_type" value="omni"/>
         <param name="odom_alpha1" value="0.2"/>
         <param name="odom_alpha2" value="0.2"/>

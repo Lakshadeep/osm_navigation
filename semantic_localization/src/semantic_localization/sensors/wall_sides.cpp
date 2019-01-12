@@ -1,4 +1,4 @@
-#include "smcl/sensors/wall_sides.h"
+#include "semantic_localization/sensors/wall_sides.h"
 #include "ros/ros.h"
 
 WallSides::WallSides()
@@ -89,8 +89,11 @@ std::vector<std::pair<wall_side_sensor_t, int>> WallSides::registerWallSides(std
     { 
         std::vector<double>::iterator result = std::min_element(std::begin(distance_matrix[j]), std::end(distance_matrix[j]));
         int matched_side_idx = std::distance(std::begin(distance_matrix[j]), result);
-        std::pair<wall_side_sensor_t, int> temp(visible_sides[matched_side_idx] , j);
-        registered_wall_sides.push_back(temp);
+        if (distance_matrix[j][matched_side_idx] < 2.0)
+        {
+            std::pair<wall_side_sensor_t, int> temp(visible_sides[matched_side_idx] , j);
+            registered_wall_sides.push_back(temp);
+        }
     }
 
     return registered_wall_sides;
