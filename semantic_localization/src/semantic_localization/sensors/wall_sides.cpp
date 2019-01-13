@@ -197,27 +197,54 @@ double WallSides::computeWeight(WallSidesData *data, pf_sample_t *sample)
     std::vector<std::pair<wall_side_sensor_t, int>> registered_sides = registerWallSides(visible_sides, data);
     updateSampleFeatures(sample, registered_sides, data);     
 
-    double pz = 0.0; 
+    double w = 0.0; 
     for (auto reg_it = registered_sides.begin(); reg_it != registered_sides.end(); reg_it++)
     {  
-        double z = fabs(reg_it->first.radius - data->detected_wall_sides[reg_it->second].radius);
- 
-        // Part 1: good, but noisy, hit
-        pz = pz + (z_hit_ * exp(-(z * z) / (2 * sigma_hit_ * sigma_hit_)));
+        double pz = 1.0;
+        double z_radial = fabs(reg_it->first.radius - data->detected_wall_sides[reg_it->second].radius);
+        double z_bearing = fabs(reg_it->first.angle - data->detected_wall_sides[reg_it->second].angle);
 
-        // Part 2: short reading from unexpected obstacle (e.g., a person)
-        if(data->detected_wall_sides[reg_it->second].radius < sensor_range_min_)
+        // Part 1: confusion matrix (prob. of wall side given wall side)
+        pz *= 0.9;
+
+        // Part 2: observation likelihood based on radial difference
+        double ol1 = (z_hit_ * exp(-(z_radial * z_radial) / (2 * sigma_hit_ * sigma_hit_)));
+
+        // Part 3: observation likelihood based on bearing difference
+        double ol2 = (z_hit_ * exp(-(z_bearing * z_bearing) / (2 * sigma_hit_ * sigma_hit_)));
+
+        pz *= (ol1 + ol2);
+
+        // Part 4: false detection
+        if( data->detected_wall_sides[reg_it->second].radius < sensor_range_min_)
           pz = pz + z_short_ * lambda_short_ * exp(-lambda_short_*data->detected_wall_sides[reg_it->second].radius);
 
-        // Part 3: Failure to detect obstacle, reported as max-range
-        if(data->detected_wall_sides[reg_it->second].radius == z_max_)
-          pz = pz + z_max_ * 1.0;
-
-        // Part 4: Random measurements
-        if(data->detected_wall_sides[reg_it->second].radius < z_max_)
+        // Part 5: Random measurements
+        if( data->detected_wall_sides[reg_it->second].radius < z_max_)
           pz = pz + z_rand_ * 1.0/z_max_;
+
+        w += pz;
     }
-    return pz;
+
+    for(auto visible_sides_it = visible_sides.begin(); visible_sides_it != visible_sides.end(); visible_sides_it++)
+    {
+        bool is_detected = false;
+        int visible_side_no = 0;
+        double pz = 1.0;
+        for (auto reg_it = registered_sides.begin(); reg_it != registered_sides.end(); reg_it++)
+        { 
+            if(reg_it->second == visible_side_no)
+            {
+                is_detected = true;
+                break;
+            }
+            visible_side_no++;
+        }
+        pz *= 0.1;
+        w -= pz;
+    }
+
+    return w;
 }
 
 bool WallSides::updateSampleFeatures(pf_sample_t *sample, std::vector<std::pair<wall_side_sensor_t, int>> registered_sides, WallSidesData *data)
@@ -267,7 +294,7 @@ double WallSides::computeWeights(WallSidesData *data, pf_sample_set_t* set)
         sample = set->samples + i;
         pose = sample->pose; 
         weight = self->computeWeight(data, sample);
-        sample->weight += weight;
+        sample->weight += (weight*sample->weight);
         total_weights = total_weights + sample->weight;
     }
     return total_weights;
