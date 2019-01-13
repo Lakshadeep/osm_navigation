@@ -458,24 +458,22 @@ void pf_update_resample_semantic(pf_t *pf)
 
   pf_cluster_stats(pf, set_b);
 
-  // Observation: this is resulting in lot of hypothesis going outside the room
-  ////////////////////////////////////////////////////////////////////////////
-  // int new_particles = (int)pf->max_samples/5;
-  // if( pf->max_samples - no_of_particles_above_avg < new_particles)
-  //     new_particles = pf->max_samples - no_of_particles_above_avg;
 
-  // int current_cluster = 0;
-  // for(int i = 0; i < new_particles; i++)
-  // {
-  //   current_cluster = current_cluster % set_b->cluster_count;
-  //   sample_b = set_b->samples + set_b->sample_count++;
-  //   sample_b->pose.v[0] = 0.9*set_b->clusters[current_cluster].mean.v[0] + 0.1*drand48();
-  //   sample_b->pose.v[1] = 0.9*set_b->clusters[current_cluster].mean.v[1] + 0.1*drand48();
-  //   sample_b->pose.v[2] = 0.9*set_b->clusters[current_cluster].mean.v[2] + 0.1*drand48();
-  //   sample_b->weight = 0.5/pf->max_samples;
-  //   current_cluster++;
-  // }
-  ////////////////////////////////////////////////////////////////////////////
+  int new_particles = (int)pf->max_samples/5;
+  if( pf->max_samples - no_of_particles_above_avg < new_particles)
+      new_particles = pf->max_samples - no_of_particles_above_avg;
+
+  int current_cluster = 0;
+  for(int i = 0; i < new_particles; i++)
+  {
+    current_cluster = current_cluster % set_b->cluster_count;
+    sample_b = set_b->samples + set_b->sample_count++;
+    sample_b->pose.v[0] = (0.995 + (0.01*drand48())) * set_b->clusters[current_cluster].mean.v[0];
+    sample_b->pose.v[1] = (0.995 + (0.01*drand48())) * set_b->clusters[current_cluster].mean.v[1];
+    sample_b->pose.v[2] = (0.995 + (0.01*drand48())) * set_b->clusters[current_cluster].mean.v[2];
+    sample_b->weight = 1.0/pf->max_samples;
+    current_cluster++;
+  }
 
   // Normalize weights
   for (i = 0; i < set_b->sample_count; i++)
