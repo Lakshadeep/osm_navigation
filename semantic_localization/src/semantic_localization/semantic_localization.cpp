@@ -209,14 +209,14 @@ void SemanticLocalization::handleMapMessage(const osm_map_msgs::SemanticMap& msg
     delete wall_sides_;
     wall_sides_ = new WallSides();
     ROS_ASSERT(wall_sides_);
-    wall_sides_->setSensorParams(0.1, 5.0, -M_PI/2.0, -M_PI/2.0);
+    wall_sides_->setSensorParams(0.1, 5.0, -M_PI/2.0, M_PI/2.0);
     wall_sides_->setModelParams(z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_, chi_outlier_);
     wall_sides_->updateMap(semantic_map_);
 
     delete pillars_;
     pillars_ = new Pillars();
     ROS_ASSERT(pillars_);
-    pillars_->setSensorParams(0.1, 5.0, -M_PI/2.0, -M_PI/2.0);
+    pillars_->setSensorParams(0.1, 5.0, -M_PI/2.0, M_PI/2.0);
     pillars_->setModelParams(z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_, chi_outlier_);
     pillars_->updateMap(semantic_map_);
 
@@ -434,12 +434,13 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
             pf_free_samples_features(pf_->sets + pf_->current_set);  // deletes samples observed previously
             wall_sides_->UpdateSensor(pf_, (SensorData*)&wsdata);
             pillars_->UpdateSensor(pf_, (SensorData*)&pdata);
+            pf_update_sensor_weights_and_params(pf_);
 
             if ((resample_count_ % 10) == 0)
             { 
                 pf_re_orient_samples(pf_);
             }
-            pf_update_sensor_weights_and_params(pf_);
+            
             // Resample the particles
             if ((resample_count_ % 10) == 0)
             { 

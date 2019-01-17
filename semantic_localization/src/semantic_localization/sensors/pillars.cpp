@@ -10,7 +10,7 @@ Pillars::~Pillars()
     delete expected_pillars; 
 }
 
-// updates expected wall sides using newly updated map
+// updates expected pillars using newly updated map
 void Pillars::updateMap(semantic_map_t *map)
 {
     expected_pillars = (pillar_sensor_t*)malloc(map->no_of_pillars * sizeof(pillar_sensor_t));
@@ -118,10 +118,13 @@ bool Pillars::getVisiblePillar(pillar_sensor_t *pillar, pf_vector_t sample)
 
     pillar->angle = atan2(pillar->point.y, pillar->point.x);
     pillar->radius = pow(pow(pillar->point.x,2) + pow(pillar->point.y,2), 0.5);
+
     if (sensor_angular_range_start_ < pillar->angle < sensor_angular_range_end_)
     {        
         if (sensor_range_min_ < pillar->radius < sensor_range_max_)
+        {
             return true;
+        }
     }
     return false;
 }
@@ -148,7 +151,7 @@ double Pillars::computeWeight(PillarsData *data, pf_sample_t *sample)
         double z_radial = fabs(reg_it->first.radius - data->detected_pillars[reg_it->second].radius);
         double z_bearing = fabs(reg_it->first.angle - data->detected_pillars[reg_it->second].angle);
 
-        // Part 1: confusion matrix (prob. of wall side given wall side)
+        // Part 1: confusion matrix (prob. of pillar given pillar)
         pz *= 0.9;
 
         // Part 2: observation likelihood based on radial difference
@@ -225,9 +228,8 @@ double Pillars::computeWeights(PillarsData *data, pf_sample_set_t* set)
 
     // for(int i = 0; i < data->pillars_count; i++)
     // {
-    //     printf("$ObservedSide:%f,%f,%f,%f,%f,%f\n", data->detected_pillars[i].corner1.x, data->detected_pillars[i].corner1.y, data->detected_pillars[i].corner2.x, data->detected_pillars[i].corner2.y, data->detected_pillars[i].radius, data->detected_pillars[i].angle);
+    //     printf("$ObservedPillar:%f,%f,%f,%f\n", data->detected_pillars[i].point.x, data->detected_pillars[i].point.y, data->detected_pillars[i].radius, data->detected_pillars[i].angle);
     // }
-
     double weight;
     pf_sample_t *sample;
     pf_vector_t pose;
