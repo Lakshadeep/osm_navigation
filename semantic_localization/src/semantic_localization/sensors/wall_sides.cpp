@@ -1,8 +1,9 @@
 #include "semantic_localization/sensors/wall_sides.h"
 #include "ros/ros.h"
 
-WallSides::WallSides()
+WallSides::WallSides(int feature_num)
 {
+    feature_type_no_ = feature_num;
 }
 
 WallSides::~WallSides()
@@ -191,6 +192,11 @@ void WallSides::convertSideToSampleCoordinates(wall_side_sensor_t *side, pf_vect
     side->corner2 = globalToLocalTransformation(sample.v[0], sample.v[1], sample.v[2], side->corner2);
 }
 
+bool WallSides::compare_pair(std::pair<double, int> p1, std::pair<double, int> p2)
+{
+    return p1.second > p2.second;
+}
+
 double WallSides::computeWeight(WallSidesData *data, pf_sample_t *sample)
 {
     std::vector<wall_side_sensor_t> visible_sides = getVisibleSides(sample->pose);
@@ -198,6 +204,7 @@ double WallSides::computeWeight(WallSidesData *data, pf_sample_t *sample)
     updateSampleFeatures(sample, registered_sides, data);     
 
     double w = 0.0; 
+    std::vector<std::pair<double,int>> detection_weights;
     for (auto reg_it = registered_sides.begin(); reg_it != registered_sides.end(); reg_it++)
     {  
         double pz = 1.0;
@@ -205,7 +212,7 @@ double WallSides::computeWeight(WallSidesData *data, pf_sample_t *sample)
         double z_bearing = fabs(reg_it->first.angle - data->detected_wall_sides[reg_it->second].angle);
 
         // Part 1: confusion matrix (prob. of wall side given wall side)
-        pz *= 0.9;
+        pz *= 0.8;
 
         // Part 2: observation likelihood based on radial difference
         double ol1 = (z_hit_ * exp(-(z_radial * z_radial) / (2 * sigma_hit_ * sigma_hit_)));
@@ -217,14 +224,43 @@ double WallSides::computeWeight(WallSidesData *data, pf_sample_t *sample)
 
         // Part 4: false detection
         if( data->detected_wall_sides[reg_it->second].radius < sensor_range_min_)
-          pz = pz + z_short_ * lambda_short_ * exp(-lambda_short_*data->detected_wall_sides[reg_it->second].radius);
+            pz = pz + z_short_ * lambda_short_ * exp(-lambda_short_*data->detected_wall_sides[reg_it->second].radius);
 
         // Part 5: Random measurements
         if( data->detected_wall_sides[reg_it->second].radius < z_max_)
-          pz = pz + z_rand_ * 1.0/z_max_;
+            pz = pz + z_rand_ * 1.0/z_max_;
 
-        w += pz;
+        std::pair<double, int> temp(pz, reg_it->second);
+        detection_weights.push_back(temp);
     }
+
+    // to average out weight of same feature detected multiple times
+    std::sort(detection_weights.begin(), detection_weights.end(), compare_pair);
+    double last_weight = 0.0;
+    int last_vis_side = -1;
+    int count = 0;
+    for (auto dw_it = detection_weights.begin(); dw_it != detection_weights.end(); dw_it++)
+    {
+        if( dw_it->second == last_vis_side)
+        {
+            if(count == 1)
+                w = w - last_weight;  
+            last_weight = last_weight + dw_it->first;
+            count++;
+        }
+        else
+        { 
+            if( count > 1 )
+                w = w + (last_weight/count);
+            w = w + dw_it->first;
+            last_weight = dw_it->first;
+            count = 1;
+            last_vis_side = dw_it->second;
+        }
+    }
+    if(count > 1)
+        w = w + last_weight;
+
 
     for(auto visible_sides_it = visible_sides.begin(); visible_sides_it != visible_sides.end(); visible_sides_it++)
     {
@@ -240,10 +276,12 @@ double WallSides::computeWeight(WallSidesData *data, pf_sample_t *sample)
             }
             visible_side_no++;
         }
-        pz *= 0.1;
-        w -= pz;
+        if (!is_detected && registered_sides.size() > 0)
+        {
+            pz *= 0.2;
+            w -= pz;
+        }
     }
-
     return w;
 }
 
@@ -272,7 +310,7 @@ bool WallSides::updateSampleFeatures(pf_sample_t *sample, std::vector<std::pair<
         }
     }
     else
-      return false;
+        return false;
 }
 
 double WallSides::computeWeights(WallSidesData *data, pf_sample_set_t* set)
@@ -294,8 +332,15 @@ double WallSides::computeWeights(WallSidesData *data, pf_sample_set_t* set)
         sample = set->samples + i;
         pose = sample->pose; 
         weight = self->computeWeight(data, sample);
-        sample->weight += (weight*sample->weight);
-        total_weights = total_weights + sample->weight;
+        sample->feature_types_count = self->feature_type_no_;
+        double* realloc_status = (double*)realloc(sample->weights, sample->feature_types_count * sizeof(double));
+        if(realloc_status !=NULL)
+        {
+            sample->weights = realloc_status;
+            sample->weights[sample->feature_types_count - 1] = weight;
+        }
+        else
+            ROS_ERROR("Reallocation failed");
     }
     return total_weights;
 }
