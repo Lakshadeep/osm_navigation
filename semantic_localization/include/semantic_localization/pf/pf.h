@@ -28,9 +28,17 @@
 #ifndef PF_H
 #define PF_H
 
-#include "pf_vector.h"
-#include "pf_kdtree.h"
-#include "../map/semantic_map.h"
+#include <assert.h>
+#include <math.h>
+#include <stdlib.h>
+#include <time.h>
+#include <float.h>
+
+#include "semantic_localization/pf/pf.h"
+#include "semantic_localization/pf/pf_pdf.h"
+#include "semantic_localization/pf/pf_kdtree.h"
+#include "semantic_localization/pf/pf_vector.h"
+#include "semantic_localization/map/semantic_map.h"
 
 #include <eigen3/Eigen/Dense>   // used for SVD computations
 #include <eigen3/Eigen/SVD>
@@ -39,6 +47,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 // Forward declarations
 struct _pf_t;
@@ -50,13 +59,11 @@ typedef pf_vector_t (*pf_init_model_fn_t) (void *init_data);
 
 // Function prototype for the action model; generates a sample pose from
 // an appropriate distribution
-typedef void (*pf_action_model_fn_t) (void *action_data, 
-                                      struct _pf_sample_set_t* set);
+typedef void (*pf_action_model_fn_t) (void *action_data, struct _pf_sample_set_t* set);
 
 // Function prototype for the sensor model; determines the probability
 // for the given set of sample poses.
-typedef double (*pf_sensor_model_fn_t) (void *sensor_data, 
-                                        struct _pf_sample_set_t* set);
+typedef double (*pf_sensor_model_fn_t) (void *sensor_data, struct _pf_sample_set_t* set);
 
 
 // Information for a single sample
@@ -130,6 +137,9 @@ typedef struct _pf_t
   // This min and max number of samples
   int min_samples, max_samples;
 
+  // resampling scaling mean and sigma
+  double resampling_mean, resampling_sigma;
+
   // Population size parameters
   double pop_err, pop_z;
   
@@ -156,7 +166,8 @@ typedef struct _pf_t
 // Create a new filter
 pf_t *pf_alloc(int min_samples, int max_samples,
                double alpha_slow, double alpha_fast,
-               pf_init_model_fn_t random_pose_fn, void *random_pose_data);
+               pf_init_model_fn_t random_pose_fn, void *random_pose_data,
+               double resampling_mean, double resampling_sigma);
 
 // Free an existing filter
 void pf_free(pf_t *pf);
@@ -182,8 +193,6 @@ void pf_re_orient_samples(pf_t *pf);
 double pi_to_pi(double angle);
 
 // Resample the distribution
-void pf_update_resample(pf_t *pf);
-
 void pf_update_resample_semantic(pf_t *pf);
 
 // Compute the CEP statistics (mean and variance).
@@ -191,8 +200,7 @@ void pf_get_cep_stats(pf_t *pf, pf_vector_t *mean, double *var);
 
 // Compute the statistics for a particular cluster.  Returns 0 if
 // there is no such cluster.
-int pf_get_cluster_stats(pf_t *pf, int cluster, double *weight,
-                         pf_vector_t *mean, pf_matrix_t *cov);
+int pf_get_cluster_stats(pf_t *pf, int cluster, double *weight, pf_vector_t *mean, pf_matrix_t *cov);
 
 // Re-compute the cluster statistics for a sample set
 void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set);

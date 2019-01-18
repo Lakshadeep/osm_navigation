@@ -25,14 +25,8 @@
  * CVS: $Id: pf_vector.c 6345 2008-04-17 01:36:39Z gerkey $
  *************************************************************************/
 
-#include <math.h>
-//#include <gsl/gsl_matrix.h>
-//#include <gsl/gsl_eigen.h>
-//#include <gsl/gsl_linalg.h>
 
 #include "semantic_localization/pf/pf_vector.h"
-#include "semantic_localization/pf/eig3.h"
-
 
 // Return a zero vector
 pf_vector_t pf_vector_zero()

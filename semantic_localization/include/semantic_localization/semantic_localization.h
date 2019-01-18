@@ -138,15 +138,16 @@ private:
     double d_thresh_, a_thresh_;
     int resample_interval_;
     int resample_count_;
+    int reorientation_interval_;
+    int reorientation_count_;
     double features_min_range_;
     double features_max_range_;
     int min_particles_, max_particles_;
     double alpha1_, alpha2_, alpha3_, alpha4_, alpha5_;
     double alpha_slow_, alpha_fast_;
     double z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_, chi_outlier_;
-    //beam skip related params
-    bool do_beamskip_;
-    double beam_skip_distance_, beam_skip_threshold_, beam_skip_error_threshold_;
+    double resampling_mean_, resampling_sigma_;
+
     odom_model_t odom_model_type_;
     double init_pose_[3];
     double init_cov_[3];
@@ -171,7 +172,7 @@ private:
     ros::Publisher pose_pub_;
     ros::Publisher particlecloud_pub_;
     ros::ServiceServer global_loc_srv_;
-    ros::ServiceServer nomotion_update_srv_; //to let sl update samples without requiring motion
+    ros::ServiceServer nomotion_update_srv_;
     ros::ServiceServer set_map_srv_;
     ros::Subscriber initial_pose_sub_old_;
     ros::Subscriber semantic_features_sub_;

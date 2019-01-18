@@ -33,6 +33,9 @@ extern "C" {
 #endif
 
 #include <stdio.h>
+#include <math.h>
+
+#include "semantic_localization/pf/eig3.h"
   
 // The basic vector
 typedef struct

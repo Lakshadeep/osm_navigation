@@ -1,6 +1,7 @@
 #include "semantic_localization/semantic_localization.h"
 
-SemanticLocalization::SemanticLocalization() : semantic_map_(NULL), pf_(NULL), resample_count_(0), odom_(NULL), private_nh_("~"), initial_pose_hyp_(NULL)
+SemanticLocalization::SemanticLocalization() : semantic_map_(NULL), pf_(NULL), resample_count_(0), odom_(NULL), 
+reorientation_count_(0), private_nh_("~"), initial_pose_hyp_(NULL)
 {
     boost::recursive_mutex::scoped_lock l(configuration_mutex_);
 
@@ -12,7 +13,7 @@ SemanticLocalization::SemanticLocalization() : semantic_map_(NULL), pf_(NULL), r
 
     private_nh_.param("features_min_range", features_min_range_, -1.0);
     private_nh_.param("features_max_range", features_max_range_, -1.0);
-    private_nh_.param("min_particles", min_particles_, 100);
+    private_nh_.param("min_particles", min_particles_, 200);
     private_nh_.param("max_particles", max_particles_, 5000);
     private_nh_.param("kld_err", pf_err_, 0.01);
     private_nh_.param("kld_z", pf_z_, 0.99);
@@ -21,18 +22,6 @@ SemanticLocalization::SemanticLocalization() : semantic_map_(NULL), pf_(NULL), r
     private_nh_.param("odom_alpha3", alpha3_, 0.2);
     private_nh_.param("odom_alpha4", alpha4_, 0.2);
     private_nh_.param("odom_alpha5", alpha5_, 0.2);
-
-    private_nh_.param("do_beamskip", do_beamskip_, false);
-    private_nh_.param("beam_skip_distance", beam_skip_distance_, 0.5);
-    private_nh_.param("beam_skip_threshold", beam_skip_threshold_, 0.3);
-    if (private_nh_.hasParam("beam_skip_error_threshold_"))
-    {
-        private_nh_.param("beam_skip_error_threshold_", beam_skip_error_threshold_);
-    }
-    else
-    {
-        private_nh_.param("beam_skip_error_threshold", beam_skip_error_threshold_, 0.9);
-    }
 
     private_nh_.param("features_z_hit", z_hit_, 0.95);
     private_nh_.param("features_z_short", z_short_, 0.1);
@@ -63,7 +52,11 @@ SemanticLocalization::SemanticLocalization() : semantic_map_(NULL), pf_(NULL), r
     private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
     private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));
     private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
-    private_nh_.param("resample_interval", resample_interval_, 2);
+
+    private_nh_.param("resampling_mean", resampling_mean_, 0.995);
+    private_nh_.param("resampling_sigma", resampling_sigma_, 0.01);
+    private_nh_.param("resample_interval", resample_interval_, 10);
+    private_nh_.param("reorientation_interval", reorientation_interval_, 10);
 
     private_nh_.param("odom_topic", odom_topic_, std::string("odom"));
     private_nh_.param("semantic_features_topic", semantic_features_topic_, std::string("semantic_features"));
@@ -179,7 +172,8 @@ void SemanticLocalization::handleMapMessage(const osm_map_msgs::SemanticMap& msg
 
     ROS_INFO("Semantic map successfully converted");
     // Create the particle filter
-    pf_ = pf_alloc(min_particles_, max_particles_, alpha_slow_, alpha_fast_, (pf_init_model_fn_t)SemanticLocalization::uniformPoseGenerator, (void *)semantic_map_);
+    pf_ = pf_alloc(min_particles_, max_particles_, alpha_slow_, alpha_fast_, (pf_init_model_fn_t)SemanticLocalization::uniformPoseGenerator, (void *)semantic_map_,
+      resampling_mean_, resampling_sigma_);
     pf_->pop_err = pf_err_;
     pf_->pop_z = pf_z_;
 
@@ -436,15 +430,15 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
             pillars_->UpdateSensor(pf_, (SensorData*)&pdata);
             pf_update_sensor_weights_and_params(pf_);
 
-            if ((resample_count_ % 10) == 0)
+            if ((resample_count_ % resample_interval_) == 0)
             { 
-                pf_re_orient_samples(pf_);
+                pf_update_resample_semantic(pf_);
             }
             
             // Resample the particles
-            if ((resample_count_ % 10) == 0)
+            if ((reorientation_count_ % reorientation_interval_) == 0)
             { 
-                pf_update_resample_semantic(pf_);
+                pf_re_orient_samples(pf_);
             }
 
             pf_sample_set_t* set = pf_->sets;
@@ -454,10 +448,8 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
             cloud_msg.poses.resize(set->sample_count);
             for (int i = 0; i < set->sample_count; i++)
             {
-                tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose.v[2]),
-                                         tf::Vector3(set->samples[i].pose.v[0],
-                                                     set->samples[i].pose.v[1], 0)),
-                                cloud_msg.poses[i]);
+                tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose.v[2]), tf::Vector3(set->samples[i].pose.v[0],
+                                set->samples[i].pose.v[1], 0)), cloud_msg.poses[i]);
             }
             particlecloud_pub_.publish(cloud_msg);
             pf_odom_pose_ = pose;
@@ -493,12 +485,8 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
 
             if (max_weight > 0.0)
             {
-                ROS_DEBUG("Max weight pose: %.3f %.3f %.3f",
-                          hyps[max_weight_hyp].pf_pose_mean.v[0],
-                          hyps[max_weight_hyp].pf_pose_mean.v[1],
-                          hyps[max_weight_hyp].pf_pose_mean.v[2]);
-
-
+                ROS_DEBUG("Max weight pose: %.3f %.3f %.3f", hyps[max_weight_hyp].pf_pose_mean.v[0],
+                          hyps[max_weight_hyp].pf_pose_mean.v[1], hyps[max_weight_hyp].pf_pose_mean.v[2]);
 
                 geometry_msgs::PoseWithCovarianceStamped p;
                 // Fill in the header
@@ -535,8 +523,8 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
                 pose_pub_.publish(p);
             }
             resample_count_ = resample_count_ + 1;
-        }
-        
+            reorientation_count_ = reorientation_count_ + 1;
+        }   
     }
     else
     {
@@ -545,6 +533,7 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
         // Filter is now initialized
         pf_init_ = true;
         resample_count_ = 0;
+        reorientation_count_ = 0;
     }
 }
 

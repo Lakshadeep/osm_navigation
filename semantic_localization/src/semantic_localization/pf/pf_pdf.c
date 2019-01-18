@@ -24,14 +24,6 @@
  * Date: 10 Dec 2002
  * CVS: $Id: pf_pdf.c 6348 2008-04-17 02:53:17Z gerkey $
  *************************************************************************/
-
-#include <assert.h>
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
-//#include <gsl/gsl_rng.h>
-//#include <gsl/gsl_randist.h>
-
 #include "semantic_localization/pf/pf_pdf.h"
 
 // Random number generator seed value
@@ -144,66 +136,3 @@ double pf_ran_gaussian(double sigma)
 
   return(sigma * x2 * sqrt(-2.0*log(w)/w));
 }
-
-#if 0
-
-/**************************************************************************
- * Discrete
- * Note that GSL v1.3 and earlier contains a bug in the discrete
- * random generator.  A patched version of the the generator is included
- * in gsl_discrete.c.
- *************************************************************************/
-
-
-// Create a discrete pdf
-pf_pdf_discrete_t *pf_pdf_discrete_alloc(int count, double *probs)
-{
-  pf_pdf_discrete_t *pdf;
-
-  pdf = calloc(1, sizeof(pf_pdf_discrete_t));
-
-  pdf->prob_count = count;
-  pdf->probs = malloc(count * sizeof(double));
-  memcpy(pdf->probs, probs, count * sizeof(double));
-  
-  // Initialize the random number generator
-  pdf->rng = gsl_rng_alloc(gsl_rng_taus);
-  gsl_rng_set(pdf->rng, ++pf_pdf_seed);
-
-  // Initialize the discrete distribution generator
-  pdf->ran = gsl_ran_discrete_preproc(count, probs);
-
-  return pdf;
-}
-
-
-// Destroy the pdf
-void pf_pdf_discrete_free(pf_pdf_discrete_t *pdf)
-{
-  gsl_ran_discrete_free(pdf->ran);
-  gsl_rng_free(pdf->rng);
-  free(pdf->probs);  
-  free(pdf);
-  return;
-}
-
-
-// Compute the value of the probability of some element [i]
-double pf_pdf_discrete_value(pf_pdf_discrete_t *pdf, int i)
-{
-  return pdf->probs[i];
-}
-
-
-// Generate a sample from the the pdf.
-int pf_pdf_discrete_sample(pf_pdf_discrete_t *pdf)
-{
-  int i;
-  
-  i = gsl_ran_discrete(pdf->rng, pdf->ran);
-  assert(i >= 0 && i < pdf->prob_count);
-
-  return i;
-}
-
-#endif
