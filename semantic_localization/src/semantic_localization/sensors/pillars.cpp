@@ -1,8 +1,9 @@
 #include "semantic_localization/sensors/pillars.h"
 #include "ros/ros.h"
 
-Pillars::Pillars()
+Pillars::Pillars(int feature_num)
 {
+    feature_type_no_ = feature_num;
 }
 
 Pillars::~Pillars()
@@ -72,7 +73,7 @@ std::vector<std::pair<pillar_sensor_t, int>> Pillars::registerPillars(std::vecto
         { 
             std::vector<double>::iterator result = std::min_element(std::begin(distance_matrix[j]), std::end(distance_matrix[j]));
             int matched_pillar_idx = std::distance(std::begin(distance_matrix[j]), result);
-            if (distance_matrix[j][matched_pillar_idx] < 2.0)
+            if (distance_matrix[j][matched_pillar_idx] < 1.0)
             {
                 std::pair<pillar_sensor_t, int> temp(visible_pillars[matched_pillar_idx] , j);
                 registered_pillars.push_back(temp);
@@ -138,6 +139,11 @@ point_t Pillars::globalToLocalTransformation(double ref_x, double ref_y, double 
     return new_pt;
 }
 
+bool Pillars::compare_pair(std::pair<double, int> p1, std::pair<double, int> p2)
+{
+    return p1.second > p2.second;
+}
+
 double Pillars::computeWeight(PillarsData *data, pf_sample_t *sample)
 {
     std::vector<pillar_sensor_t> visible_pillars = getVisiblePillars(sample->pose);
@@ -145,6 +151,7 @@ double Pillars::computeWeight(PillarsData *data, pf_sample_t *sample)
     updateSampleFeatures(sample, registered_pillars, data); 
 
     double w = 0.0; 
+    std::vector<std::pair<double,int>> detection_weights;
     for (auto reg_it = registered_pillars.begin(); reg_it != registered_pillars.end(); reg_it++)
     {  
         double pz = 1.0;
@@ -152,7 +159,7 @@ double Pillars::computeWeight(PillarsData *data, pf_sample_t *sample)
         double z_bearing = fabs(reg_it->first.angle - data->detected_pillars[reg_it->second].angle);
 
         // Part 1: confusion matrix (prob. of pillar given pillar)
-        pz *= 0.9;
+        pz *= 0.6;
 
         // Part 2: observation likelihood based on radial difference
         double ol1 = (z_hit_ * exp(-(z_radial * z_radial) / (2 * sigma_hit_ * sigma_hit_)));
@@ -170,8 +177,36 @@ double Pillars::computeWeight(PillarsData *data, pf_sample_t *sample)
         if( data->detected_pillars[reg_it->second].radius < z_max_)
           pz = pz + z_rand_ * 1.0/z_max_;
 
-        w += pz;
+        std::pair<double, int> temp(pz, reg_it->second);
+        detection_weights.push_back(temp);
     }
+
+    // to average out weight of same feature detected multiple times
+    std::sort(detection_weights.begin(), detection_weights.end(), compare_pair);
+    double last_weight = 0.0;
+    int last_vis_side = -1;
+    int count = 0;
+    for (auto dw_it = detection_weights.begin(); dw_it != detection_weights.end(); dw_it++)
+    {
+        if( dw_it->second == last_vis_side)
+        {
+            if(count == 1)
+                w = w - last_weight;  
+            last_weight = last_weight + dw_it->first;
+            count++;
+        }
+        else
+        { 
+            if( count > 1 )
+                w = w + (last_weight/count);
+            w = w + dw_it->first;
+            last_weight = dw_it->first;
+            count = 1;
+            last_vis_side = dw_it->second;
+        }
+    }
+    if(count > 1)
+        w = w + last_weight;
 
     for(auto visible_pillars_it = visible_pillars.begin(); visible_pillars_it != visible_pillars.end(); visible_pillars_it++)
     {
@@ -187,8 +222,11 @@ double Pillars::computeWeight(PillarsData *data, pf_sample_t *sample)
             }
             visible_pillar_no++;
         }
-        pz *= 0.1;
-        w -= pz;
+        if (!is_detected && registered_pillars.size() > 0)
+        {
+            pz *= 0.2;
+            w -= pz;
+        }
     }
     return w;
 }
@@ -239,8 +277,15 @@ double Pillars::computeWeights(PillarsData *data, pf_sample_set_t* set)
         sample = set->samples + i;
         pose = sample->pose; 
         weight = self->computeWeight(data, sample);
-        sample->weight += (weight*sample->weight);
-        total_weights = total_weights + sample->weight;
+        sample->feature_types_count = self->feature_type_no_;
+        double* realloc_status = (double*)realloc(sample->weights, sample->feature_types_count * sizeof(double));
+        if(realloc_status != NULL)
+        {
+            sample->weights = realloc_status;
+            sample->weights[sample->feature_types_count - 1] = weight;
+        }
+        else
+            ROS_ERROR("Reallocation failed");
     }
     return total_weights;
 }

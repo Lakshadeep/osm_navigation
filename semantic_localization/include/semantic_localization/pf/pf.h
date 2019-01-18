@@ -68,6 +68,12 @@ typedef struct
   // Weight for this pose
   double weight;
 
+  // indivisual weights assigned by each feature
+  double *weights;
+
+  // total diff feature types used
+  int feature_types_count;
+
   // expected features
   point_t *expected_features;
   int no_of_expected_features;

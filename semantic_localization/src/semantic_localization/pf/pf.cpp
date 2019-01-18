@@ -156,6 +156,7 @@ void pf_init(pf_t *pf, pf_vector_t mean, pf_matrix_t cov)
     sample->weight = 1.0 / pf->max_samples;
     sample->pose = pf_pdf_gaussian_sample(pdf);
     sample->no_of_expected_features = 0;
+    sample->feature_types_count = 0;
 
     // Add sample to histogram
     pf_kdtree_insert(set->kdtree, sample->pose, sample->weight);
@@ -367,13 +368,19 @@ void pf_update_sensor_weights_and_params(pf_t *pf)
   int i;
   pf_sample_set_t *set;
   pf_sample_t *sample;
-  double total;
+  double total = 0.0;
 
   set = pf->sets + pf->current_set;
 
   for (i = 0; i < set->sample_count; i++)
   {
     sample = set->samples + i;
+    double temp_weight = 0.0;
+    for (int j = 0; j < sample->feature_types_count; j++)
+    {
+      temp_weight = temp_weight + sample->weights[j];
+    }
+    sample->weight = sample->weight*temp_weight;
     total += sample->weight;
   }
   

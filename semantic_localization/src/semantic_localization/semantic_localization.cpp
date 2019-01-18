@@ -207,14 +207,14 @@ void SemanticLocalization::handleMapMessage(const osm_map_msgs::SemanticMap& msg
     odom_->SetModel( odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_ );
 
     delete wall_sides_;
-    wall_sides_ = new WallSides();
+    wall_sides_ = new WallSides(1);
     ROS_ASSERT(wall_sides_);
     wall_sides_->setSensorParams(0.1, 5.0, -M_PI/2.0, M_PI/2.0);
     wall_sides_->setModelParams(z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_, chi_outlier_);
     wall_sides_->updateMap(semantic_map_);
 
     delete pillars_;
-    pillars_ = new Pillars();
+    pillars_ = new Pillars(2);
     ROS_ASSERT(pillars_);
     pillars_->setSensorParams(0.1, 5.0, -M_PI/2.0, M_PI/2.0);
     pillars_->setModelParams(z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_, chi_outlier_);

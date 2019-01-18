@@ -37,7 +37,7 @@ public:
 class Pillars : public Sensor
 {
 public: 
-    Pillars();
+    Pillars(int);
     ~Pillars();
     void setSensorParams(double sensor_range_min, double sensor_range_max, double sensor_angular_range_start, double sensor_angular_range_end);
     void setModelParams(double z_hit, double z_short, double z_max, double z_rand, double sigma_hit, double labda_short, double chi_outlier);
@@ -45,6 +45,9 @@ public:
     virtual bool UpdateSensor(pf_t *pf, SensorData *data);
 
 private:
+    // feature type no
+    int feature_type_no_;
+
     // sensor params
     double sensor_range_min_;
     double sensor_range_max_ ;
@@ -75,6 +78,7 @@ private:
     // particle filter related functions
     double computeWeight(PillarsData *data, pf_sample_t *sample);
     static double computeWeights(PillarsData *data, pf_sample_set_t *set);
+    static bool compare_pair(std::pair<double, int> p1, std::pair<double, int> p2);
 
     // feature registration related functions
     point_t polarToCartesian(double radius, double angle);
