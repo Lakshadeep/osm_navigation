@@ -57,6 +57,7 @@
   <build_depend>geometry_msgs</build_depend>
   <build_depend>actionlib</build_depend>
   <build_depend>actionlib_msgs</build_depend>
+  <build_depend>osm_nav_msgs</build_depend>
 
   <exec_depend>rospy</exec_depend>
   <exec_depend>message_runtime</exec_depend>
@@ -64,6 +65,7 @@
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>actionlib</exec_depend>
   <exec_depend>actionlib_msgs</exec_depend>
+  <exec_depend>osm_nav_msgs</exec_depend>
   
   <!-- Use test_depend for packages you need only for testing: -->
   <!--   <test_depend>gtest</test_depend> -->

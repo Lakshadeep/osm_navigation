@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 2.8.6)
 
 project(osm_trajectory_planner)
 
-
-
 ########################################################################
 # ROS dependency
 ########################################################################
@@ -14,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib
   std_msgs
   geometry_msgs
+  osm_nav_msgs
 )
 
 include_directories(
@@ -21,18 +20,6 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_message_files(
-  DIRECTORY msg
-  FILES
-  Waypoint.msg
-)
-
-
-add_action_files(
-  DIRECTORY action
-  FILES
-  OSMLowLevelPlanner.action
-)
 catkin_python_setup()
 
 generate_messages(

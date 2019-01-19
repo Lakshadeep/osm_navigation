@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 
-PACKAGE = 'osm_low_level_planner'
-NODE = 'osm_low_level_planner_node'
+PACKAGE = 'osm_trajectory_planner'
+NODE = 'osm_trajectory_planner_node'
 
 from OBL import OSMBridge, PathPlanner
 import rospy
 from actionlib import SimpleActionServer 
-from osm_low_level_planner.msg import *
-from osm_low_level_planner.osm_low_level_planner_callback import OSMLowLevelPlannerCallback
+from osm_nav_msgs.msg import *
+from osm_trajectory_planner.osm_trajectory_planner_callback import OSMTrajectoryPlannerCallback
 
 
-class OSMLowLevelPlannerNode(object):
+class OSMTrajectoryPlannerNode(object):
 
     def __init__(self):
         server_ip = rospy.get_param('~overpass_server_ip')
@@ -24,8 +24,8 @@ class OSMLowLevelPlannerNode(object):
         rospy.loginfo("Global origin: " + str(global_origin))
         rospy.loginfo("Starting servers...")
 
-        self.osm_low_level_planner_server = SimpleActionServer('/osm_low_level_planner', OSMLowLevelPlannerAction, self._osm_low_level_planner, False)
-        self.osm_low_level_planner_server.start()
+        self.osm_trajectory_planner_server = SimpleActionServer('/osm_trajectory_planner', OSMTrajectoryPlannerAction, self._osm_trajectory_planner, False)
+        self.osm_trajectory_planner_server.start()
 
         osm_bridge = OSMBridge(
                 server_ip=server_ip,
@@ -35,20 +35,20 @@ class OSMLowLevelPlannerNode(object):
                 debug=False)
         path_planner = PathPlanner(osm_bridge)
         path_planner.set_building(building)
-        self.osm_low_level_planner_callback = OSMLowLevelPlannerCallback(osm_bridge, path_planner)
+        self.osm_trajectory_planner_callback = OSMTrajectoryPlannerCallback(osm_bridge, path_planner)
 
-        rospy.loginfo("OSM low level server started. Listening for requests...")
+        rospy.loginfo("OSM trajectory planner server started. Listening for requests...")
 
 
-    def _osm_low_level_planner(self, req):
-        res = self.osm_low_level_planner_callback.get_safe_response(req)
+    def _osm_trajectory_planner(self, req):
+        res = self.osm_trajectory_planner_callback.get_safe_response(req)
         if res is not None:
-            self.osm_low_level_planner_server.set_succeeded(res)
+            self.osm_trajectory_planner_server.set_succeeded(res)
         else:
-            self.osm_low_level_planner_server.set_aborted(res) 
+            self.osm_trajectory_planner_server.set_aborted(res) 
 
 
 if __name__ == "__main__":
     rospy.init_node(NODE)
-    osm_low_level_planner_node = OSMLowLevelPlannerNode()
+    osm_trajectory_planner_node = OSMTrajectoryPlannerNode()
     rospy.spin()

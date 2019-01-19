@@ -1,10 +1,10 @@
-from osm_low_level_planner.msg import *
+from osm_nav_msgs.msg import *
 import rospy
 import math
 from geometry_msgs.msg import Pose, Point, Quaternion
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
-class OSMLowLevelPlannerCallback(object):
+class OSMTrajectoryPlannerCallback(object):
 
     """callback for wm query server"""
 
@@ -62,7 +62,7 @@ class OSMLowLevelPlannerCallback(object):
         last_pt = [0,0]
         last_orientation = 0
 
-        res = OSMLowLevelPlannerResult()
+        res = OSMTrajectoryPlannerResult()
 
         for pt in path:
             temp = None
