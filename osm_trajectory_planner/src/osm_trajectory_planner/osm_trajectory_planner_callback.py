@@ -49,11 +49,23 @@ class OSMTrajectoryPlannerCallback(object):
         
         extracted_path = []
         for area in path:
+            a = Area()
+            a.id = area.id
+            a.ref = area.ref
+            a.type = area.type
             for nav_area in area.navigation_areas:
-                extracted_path.append({'id':nav_area.id,'ref':str(nav_area.ref),'type':str(nav_area.type)})
+                w = Waypoint()
+                w.id = nav_area.id
+                w.ref = nav_area.ref
+                w.type = nav_area.type
+                a.waypoints.append(w)
             if area.exit_door is not None:
-                extracted_path.append({'id':area.exit_door.id,'ref':str(area.exit_door.ref),'type':str(area.exit_door.type)})
-
+                w = Waypoint()
+                w.id = area.exit_door.id
+                w.ref = area.exit_door.ref
+                w.type = area.exit_door.type
+                a.waypoints.append(w)
+            extracted_path.append(a)
         return self._plan_route(extracted_path)
 
     def _plan_route(self, path):
@@ -64,29 +76,34 @@ class OSMTrajectoryPlannerCallback(object):
 
         res = OSMTrajectoryPlannerResult()
 
-        for pt in path:
-            temp = None
-            if pt['type'] == 'local_area':
-                temp = self.osm_bridge.get_local_area(pt['id'])
-            elif pt['type'] == 'door':
-                temp = self.osm_bridge.get_local_area(pt['id'])
-            
-            if temp is not None:
-                topology_node = temp.topology
-                if is_first_pt:
-                    is_first_pt = False
-                else:
-                    last_orientation = math.atan2(topology_node.y - last_pt[1], topology_node.x - last_pt[0])
-                    p = Pose()
-                    p.position = Point(x=last_pt[0],y=last_pt[1],z=0)
-                    p.orientation = Quaternion(*quaternion_from_euler(0,0,last_orientation))      
-                    res.waypoints.append(Waypoint(id=str(temp.id),ref=temp.ref,floor_number=temp.level,waypoint_pose=p))
-                    # print(last_pt[0], last_pt[1], last_orientation*180/3.1457)
+        for i, area in enumerate(path):
+            for j, pt in enumerate(area.waypoints):
+                temp = None
+                if pt.type == 'local_area':
+                    temp = self.osm_bridge.get_local_area(pt.id)
+                elif pt.type == 'door':
+                    temp = self.osm_bridge.get_local_area(pt.id)
+                
+                if temp is not None:
+                    topology_node = temp.topology
+                    if is_first_pt:
+                        is_first_pt = False
+                    else:
+                        last_orientation = math.atan2(topology_node.y - last_pt[1], topology_node.x - last_pt[0])
+                        p = Pose()
+                        p.position = Point(x=last_pt[0],y=last_pt[1],z=0)
+                        p.orientation = Quaternion(*quaternion_from_euler(0,0,last_orientation))
+                        if j > 0:      
+                            area.waypoints[j-1].waypoint_pose = p
+                        else:
+                            path[i-1].waypoints[len(path[i-1].waypoints) -1].waypoint_pose = p
+                        # print(last_pt[0], last_pt[1], last_orientation*180/3.1457)
+                    last_pt = [topology_node.x, topology_node.y]
+        p = Pose()
+        p.position = Point(x=last_pt[0],y=last_pt[1],z=0)
+        p.orientation = Quaternion(*quaternion_from_euler(0,0,last_orientation))
+        path[len(path)-1].waypoints[len(path[len(path)-1].waypoints) -1].waypoint_pose = p
 
-                last_pt = [topology_node.x, topology_node.y]
-            p = Pose()
-            p.position = Point(x=last_pt[0],y=last_pt[1],z=0)
-            p.orientation = Quaternion(*quaternion_from_euler(0,0,last_orientation))    
-            res.waypoints.append(Waypoint(id=str(temp.id),ref=temp.ref,floor_number=temp.level,waypoint_pose=p))
+        res.areas = path
         return res
 
