@@ -420,7 +420,7 @@ void pf_update_resample_semantic(pf_t *pf)
   }
 
   w_avg = w_avg/set_a->sample_count;
-  printf("Wavg: %f\n", w_avg);
+  // printf("Wavg: %f\n", w_avg);
 
   pf_kdtree_clear(set_b->kdtree);
 
@@ -436,7 +436,7 @@ void pf_update_resample_semantic(pf_t *pf)
       pf_kdtree_insert(set_b->kdtree, sample_b->pose, sample_b->weight);
     }
   }
-  printf("No of particles above avg: %d\n", no_of_particles_above_avg);
+  // printf("No of particles above avg: %d\n", no_of_particles_above_avg);
 
   pf_cluster_stats(pf, set_b);
 
@@ -555,7 +555,7 @@ void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set)
         c[j][k] += sample->weight * sample->pose.v[j] * sample->pose.v[k];
       }
   }
-  printf("Cluster count: %d\n", set->cluster_count);
+  // printf("$HypothesisCount: %d\n", set->cluster_count);
   // Normalize
   for (i = 0; i < set->cluster_count; i++)
   {

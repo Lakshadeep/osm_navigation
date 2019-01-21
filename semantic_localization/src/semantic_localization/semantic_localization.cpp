@@ -407,6 +407,11 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
 
             wsdata.detected_wall_sides[i].radius = semantic_map.wall_sides[i].radius;
             wsdata.detected_wall_sides[i].angle = semantic_map.wall_sides[i].angle;
+
+            ROS_DEBUG("$DetectedSide:%d,%f,%f,%f,%f,%f,%f\n",i, wsdata.detected_wall_sides[i].corner1.x, wsdata.detected_wall_sides[i].corner1.y,
+            wsdata.detected_wall_sides[i].corner2.x, wsdata.detected_wall_sides[i].corner1.y, wsdata.detected_wall_sides[i].radius,
+            wsdata.detected_wall_sides[i].angle);
+
         }
         wsdata.sensor = wall_sides_;
 
@@ -419,6 +424,9 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
 
             pdata.detected_pillars[i].radius = semantic_map.pillars[i].radius;
             pdata.detected_pillars[i].angle = semantic_map.pillars[i].angle;
+
+            ROS_DEBUG("$DetectedPillar:%d,%f,%f,%f,%f\n",i, pdata.detected_pillars[i].point.x, pdata.detected_pillars[i].point.y,
+            pdata.detected_pillars[i].radius, pdata.detected_pillars[i].angle);
         }
         pdata.sensor = pillars_;
 
@@ -456,6 +464,8 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
 
             /////////////////////////////////////////////////////////////////////
 
+            ROS_DEBUG("$HypothesisCount:%d\n", pf_->sets[pf_->current_set].cluster_count);
+
             double max_weight = 0.0;
             int max_weight_hyp = -1;
             std::vector<sl_hyp_t> hyps;
@@ -472,6 +482,9 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
                     break;
                 }
 
+                ROS_DEBUG("$Hypothesis:%d,%.3f,%.3f,%.3f", hyp_count, hyps[max_weight_hyp].pf_pose_mean.v[0],
+                          hyps[max_weight_hyp].pf_pose_mean.v[1], hyps[max_weight_hyp].pf_pose_mean.v[2]);
+
                 hyps[hyp_count].weight = weight;
                 hyps[hyp_count].pf_pose_mean = pose_mean;
                 hyps[hyp_count].pf_pose_cov = pose_cov;
@@ -485,7 +498,7 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
 
             if (max_weight > 0.0)
             {
-                ROS_DEBUG("Max weight pose: %.3f %.3f %.3f", hyps[max_weight_hyp].pf_pose_mean.v[0],
+                ROS_DEBUG("$MaxWeightPose:%d,%.3f,%.3f,%.3f", max_weight_hyp, hyps[max_weight_hyp].pf_pose_mean.v[0],
                           hyps[max_weight_hyp].pf_pose_mean.v[1], hyps[max_weight_hyp].pf_pose_mean.v[2]);
 
                 geometry_msgs::PoseWithCovarianceStamped p;
