@@ -98,7 +98,7 @@ void SemanticLocalization::updatePoseFromServer()
     init_cov_[0] = 0.5 * 0.5;
     init_cov_[1] = 0.5 * 0.5;
     init_cov_[2] = (M_PI / 12.0) * (M_PI / 12.0);
-    // Check for NAN on input from param server, #5239
+
     double tmp_pos;
     private_nh_.param("initial_pose_x", tmp_pos, init_pose_[0]);
     if (!std::isnan(tmp_pos))
@@ -110,6 +110,7 @@ void SemanticLocalization::updatePoseFromServer()
         init_pose_[1] = tmp_pos;
     else
         ROS_WARN("ignoring NAN in initial pose Y position");
+    
     private_nh_.param("initial_pose_a", tmp_pos, init_pose_[2]);
     if (!std::isnan(tmp_pos))
         init_pose_[2] = tmp_pos;
@@ -195,19 +196,20 @@ void SemanticLocalization::handleMapMessage(const osm_map_msgs::SemanticMap& msg
 
     // Instantiate the sensor objects
     // Odometry
-    delete odom_;
+    // Investigate why delete fails most of the time during initialisation
+    // delete odom_;    
     odom_ = new Odom();
     ROS_ASSERT(odom_);
     odom_->SetModel( odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_ );
 
-    delete wall_sides_;
+    // delete wall_sides_;
     wall_sides_ = new WallSides(1);
     ROS_ASSERT(wall_sides_);
     wall_sides_->setSensorParams(0.1, 5.0, -M_PI/2.0, M_PI/2.0);
     wall_sides_->setModelParams(z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_, chi_outlier_);
     wall_sides_->updateMap(semantic_map_);
 
-    delete pillars_;
+    // delete pillars_;
     pillars_ = new Pillars(2);
     ROS_ASSERT(pillars_);
     pillars_->setSensorParams(0.1, 5.0, -M_PI/2.0, M_PI/2.0);
@@ -481,8 +483,8 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
                     ROS_ERROR("Couldn't get stats on cluster %d", hyp_count);
                     break;
                 }
-
-                ROS_DEBUG("$Hypothesis:%d,%.3f,%.3f,%.3f", hyp_count, hyps[max_weight_hyp].pf_pose_mean.v[0],
+                if(max_weight_hyp != -1)
+                    ROS_DEBUG("$Hypothesis:%d,%.3f,%.3f,%.3f", hyp_count, hyps[max_weight_hyp].pf_pose_mean.v[0],
                           hyps[max_weight_hyp].pf_pose_mean.v[1], hyps[max_weight_hyp].pf_pose_mean.v[2]);
 
                 hyps[hyp_count].weight = weight;
