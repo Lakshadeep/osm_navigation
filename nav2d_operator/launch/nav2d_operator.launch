@@ -1,0 +1,7 @@
+<launch>
+  <node name="Operator" pkg="nav2d_operator" type="operator" >
+    <remap from="scan" to="/ropod/laser/scan"/>
+    <rosparam file="$(find nav2d_operator)/config/operator.yaml"/>
+    <rosparam file="$(find nav2d_operator)/config/costmap.yaml" ns="local_map" />
+  </node>
+</launch>
