@@ -484,8 +484,8 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
                     break;
                 }
                 if(max_weight_hyp != -1)
-                    ROS_DEBUG("$Hypothesis:%d,%.3f,%.3f,%.3f", hyp_count, hyps[max_weight_hyp].pf_pose_mean.v[0],
-                          hyps[max_weight_hyp].pf_pose_mean.v[1], hyps[max_weight_hyp].pf_pose_mean.v[2]);
+                    ROS_DEBUG("$Hypothesis:%d,%.3f,%.3f,%.3f", hyp_count, hyps[hyp_count].pf_pose_mean.v[0],
+                          hyps[hyp_count].pf_pose_mean.v[1], hyps[hyp_count].pf_pose_mean.v[2]);
 
                 hyps[hyp_count].weight = weight;
                 hyps[hyp_count].pf_pose_mean = pose_mean;

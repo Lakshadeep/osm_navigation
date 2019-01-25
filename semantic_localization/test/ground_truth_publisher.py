@@ -5,6 +5,7 @@
 import rospy
 from geometry_msgs.msg import Pose, PoseStamped
 from nav_msgs.msg import Odometry
+import tf
 
 class GT(object):
     def __init__(self):
@@ -20,6 +21,12 @@ class GT(object):
         pose_msg.pose.position.y = pose_msg.pose.position.y + 25
         pose_msg.header = data.header
         pose_msg.header.frame_id = 'map'
+        quaternion = [pose_msg.pose.orientation.x, pose_msg.pose.orientation.y, pose_msg.pose.orientation.z, pose_msg.pose.orientation.w]
+        euler = tf.transformations.euler_from_quaternion(quaternion)
+        roll = euler[0]
+        pitch = euler[1]
+        yaw = euler[2]
+        rospy.loginfo("$GroundTruth:%.3f,%3f,%3f",pose_msg.pose.position.x, pose_msg.pose.position.y, yaw)
         self.pub.publish(pose_msg)
 
 if __name__ == '__main__':
