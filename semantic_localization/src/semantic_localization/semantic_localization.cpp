@@ -357,6 +357,8 @@ void SemanticLocalization::odomReceived(const nav_msgs::OdometryConstPtr& odom_m
     tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
 
     updated_odom_pose_.v[2] = yaw;
+
+    ROS_DEBUG("$GroundTruth:%.3f,%3f,%3f",updated_odom_pose_.v[0] + 60, updated_odom_pose_.v[1] + 25, updated_odom_pose_.v[2]);
 }
 
 void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_map)
@@ -483,9 +485,6 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
                     ROS_ERROR("Couldn't get stats on cluster %d", hyp_count);
                     break;
                 }
-                if(max_weight_hyp != -1)
-                    ROS_DEBUG("$Hypothesis:%d,%.3f,%.3f,%.3f", hyp_count, hyps[hyp_count].pf_pose_mean.v[0],
-                          hyps[hyp_count].pf_pose_mean.v[1], hyps[hyp_count].pf_pose_mean.v[2]);
 
                 hyps[hyp_count].weight = weight;
                 hyps[hyp_count].pf_pose_mean = pose_mean;
@@ -496,6 +495,10 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
                     max_weight = hyps[hyp_count].weight;
                     max_weight_hyp = hyp_count;
                 }
+
+                if(max_weight_hyp != -1)
+                    ROS_DEBUG("$Hypothesis:%d,%.3f,%.3f,%.3f", hyp_count, hyps[hyp_count].pf_pose_mean.v[0],
+                          hyps[hyp_count].pf_pose_mean.v[1], hyps[hyp_count].pf_pose_mean.v[2]);
             }
 
             if (max_weight > 0.0)

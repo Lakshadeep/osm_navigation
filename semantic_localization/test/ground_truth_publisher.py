@@ -26,7 +26,7 @@ class GT(object):
         roll = euler[0]
         pitch = euler[1]
         yaw = euler[2]
-        rospy.loginfo("$GroundTruth:%.3f,%3f,%3f",pose_msg.pose.position.x, pose_msg.pose.position.y, yaw)
+        #rospy.loginfo("$GroundTruth:%.3f,%3f,%3f",pose_msg.pose.position.x, pose_msg.pose.position.y, yaw)
         self.pub.publish(pose_msg)
 
 if __name__ == '__main__':
