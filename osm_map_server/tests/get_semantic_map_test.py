@@ -17,7 +17,8 @@ class GetSemanticMapClient(object):
 
         self.client = rospy.ServiceProxy(SERVER, GetSemanticMap)
         
-        res = self.client(area_ref='BRSU_C_L0_RoomC022')
+        res = self.client(area_refs=['BRSU_C_L0_RoomC022', 'BRSU_C_L0_C9'], level=0, is_elevator=False)
+        # res = self.client(area_refs=['BRSU_A_E1'], is_elevator=True)
 
         try:
             assert(len(res.map.wall_sides) == 5)

@@ -3,13 +3,14 @@
 PACKAGE = 'map_server'
 NODE = 'map_server_node'
 
-from OBL import OSMBridge, SemanticFeaturesFinder
+from OBL import OSMBridge, SemanticFeaturesFinder, OSMAdapter
 import rospy
 from actionlib import SimpleActionServer 
 from osm_map_msgs.msg import *
 from osm_map_msgs.srv import *
 
-from osm_map_server.get_map import GetMap
+from osm_map_server.get_3d_map import Get3DMap
+from osm_map_server.get_2d_map import Get2DMap
 
 class MapServerNode(object):
 
@@ -18,6 +19,7 @@ class MapServerNode(object):
         server_port = rospy.get_param('~overpass_server_port')
         ref_lat = rospy.get_param('~ref_latitude')
         ref_lon = rospy.get_param('~ref_longitude')
+        map_dimension = rospy.get_param('~map_dimension')
         global_origin = [ref_lat, ref_lon]
 
         rospy.loginfo("Server " + server_ip + ":" + str(server_port))
@@ -31,8 +33,21 @@ class MapServerNode(object):
                 coordinate_system="cartesian",
                 debug=False)
 
+        self.osm_adapter = OSMAdapter(
+                server_ip=server_ip,
+                server_port=server_port,
+                global_origin=global_origin,
+                coordinate_system="cartesian",
+                debug=False)
+
         self.semantic_features_finder = SemanticFeaturesFinder(self.osm_bridge)
-        self.get_map = GetMap(self.osm_bridge, self.semantic_features_finder)
+
+        if map_dimension == '3D':
+            self.get_map = Get3DMap(self.osm_bridge, self.semantic_features_finder)
+        elif map_dimension == '2D':
+            self.get_map = Get2DMap(self.osm_bridge, self.osm_adapter, self.semantic_features_finder)
+        else:
+            rospy.logerr("Please specify correct map dimension")
 
         self.get_geometric_map_server = rospy.Service('/get_geometric_map', GetGeometricMap, self._get_geometric_map)
         rospy.loginfo("Get geometric map server started. Listening for queries...")

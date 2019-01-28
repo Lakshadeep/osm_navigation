@@ -5,5 +5,6 @@
         <param name="overpass_server_port" value="8000" />
         <param name="ref_latitude" value="50.7800401" />  
         <param name="ref_longitude" value="7.18226" />
+        <param name="map_dimension" value="2D" />  <!-- 2D or 3D-->
     </node>  
 </launch>
