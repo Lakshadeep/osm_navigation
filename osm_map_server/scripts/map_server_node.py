@@ -19,6 +19,7 @@ class MapServerNode(object):
         server_port = rospy.get_param('~overpass_server_port')
         ref_lat = rospy.get_param('~ref_latitude')
         ref_lon = rospy.get_param('~ref_longitude')
+        map_dimension = rospy.get_param('~map_dimension')
         global_origin = [ref_lat, ref_lon]
 
         rospy.loginfo("Server " + server_ip + ":" + str(server_port))
@@ -40,8 +41,13 @@ class MapServerNode(object):
                 debug=False)
 
         self.semantic_features_finder = SemanticFeaturesFinder(self.osm_bridge)
-        self.get_map = Get3DMap(self.osm_bridge, self.semantic_features_finder)
-        self.get_map = Get2DMap(self.osm_bridge, self.osm_adapter, self.semantic_features_finder)
+
+        if map_dimension == '3D':
+            self.get_map = Get3DMap(self.osm_bridge, self.semantic_features_finder)
+        elif map_dimension == '2D':
+            self.get_map = Get2DMap(self.osm_bridge, self.osm_adapter, self.semantic_features_finder)
+        else:
+            rospy.logerr("Please specify correct map dimension")
 
         self.get_geometric_map_server = rospy.Service('/get_geometric_map', GetGeometricMap, self._get_geometric_map)
         rospy.loginfo("Get geometric map server started. Listening for queries...")

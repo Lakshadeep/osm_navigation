@@ -26,22 +26,30 @@ class Get2DMap(object):
     
 
     def get_geometric_map(self, req):
-        area_ref = req.area_id or req.area_ref
+        area_refs = []
+        if len(req.area_ids) > 0 and len(req.area_refs) > 0:
+            rospy.logerr("Please either pass refs or ids. Both are not accepted!")
+        elif len(req.area_ids) > 0:
+            area_refs = req.area_ids
+        elif len(req.area_refs) > 0:
+            area_refs = req.area_refs
+
         floor_number = req.level
         res = GetGeometricMapResponse()
         geom_map = GeometricMap()
         geom_map.header.frame_id = "/map"
         geom_map.header.stamp = rospy.get_rostime()
         try:
-            walls = self.extract_walls(area_ref, floor_number)
-            for wall in walls or []:
-                geom_map.walls.append(OBLToROSAdapter.convert_obl_shape_obj_to_ros_polygon_msg(wall))
-            pillars = self.extract_pillars(area_ref, floor_number)
-            for pillar in pillars or []:
-                geom_map.pillars.append(OBLToROSAdapter.convert_obl_shape_obj_to_ros_polygon_msg(pillar))
-            doors = self.extract_doors(area_ref, floor_number)
-            for door in doors or []:
-                geom_map.doors.append(OBLToROSAdapter.convert_obl_shape_obj_to_ros_polygon_msg(door))
+            for area_ref in area_refs:
+                walls = self.extract_walls(area_ref, floor_number)
+                for wall in walls or []:
+                    geom_map.walls.append(OBLToROSAdapter.convert_obl_shape_obj_to_ros_polygon_msg(wall))
+                pillars = self.extract_pillars(area_ref, floor_number)
+                for pillar in pillars or []:
+                    geom_map.pillars.append(OBLToROSAdapter.convert_obl_shape_obj_to_ros_polygon_msg(pillar))
+                doors = self.extract_doors(area_ref, floor_number)
+                for door in doors or []:
+                    geom_map.doors.append(OBLToROSAdapter.convert_obl_shape_obj_to_ros_polygon_msg(door))
             res.map = geom_map
             return res
         except Exception as e:
@@ -49,22 +57,30 @@ class Get2DMap(object):
             return None
 
     def get_semantic_map(self, req):
-        area_ref = req.area_id or req.area_ref
+        area_refs = []
+        if len(req.area_ids) > 0 and len(req.area_refs) > 0:
+            rospy.logerr("Please either pass refs or ids. Both are not accepted!")
+        elif len(req.area_ids) > 0:
+            area_refs = req.area_ids
+        elif len(req.area_refs) > 0:
+            area_refs = req.area_refs
+
         floor_number = req.level
         res = GetSemanticMapResponse()
         semantic_map = SemanticMap()
         semantic_map.header.frame_id = "/map"
         semantic_map.header.stamp = rospy.get_rostime()
         try:
-            wall_sides = self.extract_wall_sides(area_ref, floor_number)
-            for wall_side in wall_sides or []:
-                semantic_map.wall_sides.append(OBLToROSAdapter.convert_obl_side_obj_to_ros_side_msg(wall_side))
-            door_sides = self.extract_door_sides(area_ref, floor_number)
-            for door_side in door_sides or []:
-                semantic_map.door_sides.append(OBLToROSAdapter.convert_obl_side_obj_to_ros_side_msg(door_side))
-            pillars = self.extract_pillars(area_ref, floor_number)
-            for pillar in pillars or []:
-                semantic_map.pillars.append(OBLToROSAdapter.convert_obl_pillar_obj_to_ros_pillar_msg(pillar))
+            for area_ref in area_refs:
+                wall_sides = self.extract_wall_sides(area_ref, floor_number)
+                for wall_side in wall_sides or []:
+                    semantic_map.wall_sides.append(OBLToROSAdapter.convert_obl_side_obj_to_ros_side_msg(wall_side))
+                door_sides = self.extract_door_sides(area_ref, floor_number)
+                for door_side in door_sides or []:
+                    semantic_map.door_sides.append(OBLToROSAdapter.convert_obl_side_obj_to_ros_side_msg(door_side))
+                pillars = self.extract_pillars(area_ref, floor_number)
+                for pillar in pillars or []:
+                    semantic_map.pillars.append(OBLToROSAdapter.convert_obl_pillar_obj_to_ros_pillar_msg(pillar))
             res.map = semantic_map
             return res
         except Exception as e:
