@@ -6,21 +6,30 @@ class OBLToROSAdapter(object):
     @staticmethod
     def convert_obl_pillar_obj_to_ros_pillar_msg(pillar_obj) :
         pillar = Pillar()
-        pillar.id = pillar_obj.id
-        pillar.point = OBLToROSAdapter.convert_obl_shape_obj_to_ros_point_msg(pillar_obj.geometry) 
+        if isinstance(pillar_obj, (list,)):
+            points = pillar_obj
+        else:
+            points = pillar_obj.geometry
+            pillar.id = pillar_obj.id
+        pillar.point = OBLToROSAdapter.convert_obl_shape_obj_to_ros_point_msg(points) 
         return pillar
 
     @staticmethod
     def convert_obl_side_obj_to_ros_side_msg(side_obj) :
         side = Side()
-        side.texture = str(side_obj.texture)
-        side.paint = str(side_obj.paint)
-        side.corners = [] 
-        for corner in side_obj.corners:
-            side.corners.append(OBLToROSAdapter.convert_obl_point_obj_to_ros_point_msg(corner))
-        side.features = [] 
-        for feature in side_obj.features or []:
-            side.features.append(OBLToROSAdapter.convert_obl_feature_obj_to_ros_feature_msg(feature))
+        if isinstance(side_obj, (list,)):
+            side.corners = [] 
+            for corner in side_obj:
+                side.corners.append(OBLToROSAdapter.convert_obl_point_obj_to_ros_point_msg(corner))
+        else: 
+            side.texture = str(side_obj.texture)
+            side.paint = str(side_obj.paint)
+            side.corners = [] 
+            for corner in side_obj.corners:
+                side.corners.append(OBLToROSAdapter.convert_obl_point_obj_to_ros_point_msg(corner))
+            side.features = [] 
+            for feature in side_obj.features or []:
+                side.features.append(OBLToROSAdapter.convert_obl_feature_obj_to_ros_feature_msg(feature))
         return side
 
     @staticmethod
@@ -45,7 +54,12 @@ class OBLToROSAdapter(object):
     @staticmethod
     def convert_obl_shape_obj_to_ros_polygon_msg(shape_obj) :
         polygon = geometry_msgs.msg.Polygon()
-        for pt_obj in shape_obj.points:
+        if isinstance(shape_obj, (list,)):
+            points = shape_obj
+        else:
+            points = shape_obj.points
+        
+        for pt_obj in points:
             polygon.points.append(OBLToROSAdapter.convert_obl_point_obj_to_ros_point_msg(pt_obj))
         return polygon
 
@@ -54,9 +68,15 @@ class OBLToROSAdapter(object):
         point = geometry_msgs.msg.Point()
         x_mid = 0.0
         y_mid = 0.0
-        for pt_obj in shape_obj.points:
+
+        if isinstance(shape_obj, (list,)):
+            points = shape_obj
+        else:
+            points = shape_obj.points
+
+        for pt_obj in points:
             x_mid = x_mid + pt_obj.x
             y_mid = y_mid + pt_obj.y
-        point.x = x_mid /len(shape_obj.points)
-        point.y = y_mid /len(shape_obj.points)
+        point.x = x_mid /len(points)
+        point.y = y_mid /len(points)
         return point

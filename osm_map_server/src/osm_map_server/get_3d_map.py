@@ -4,7 +4,7 @@ import rospy
 import geometry_msgs.msg
 from osm_map_server.obl_to_ros_adapter import OBLToROSAdapter 
 
-class GetMap(object):
+class Get3DMap(object):
 
     def __init__(self, osm_bridge, semantic_features_finder):
         self.osm_bridge = osm_bridge
