@@ -35,19 +35,20 @@ class Get2DMap(object):
             area_refs = req.area_refs
 
         floor_number = req.level
+        is_elevator = req.is_elevator
         res = GetGeometricMapResponse()
         geom_map = GeometricMap()
         geom_map.header.frame_id = "/map"
         geom_map.header.stamp = rospy.get_rostime()
         try:
             for area_ref in area_refs:
-                walls = self.extract_walls(area_ref, floor_number)
+                walls = self.extract_walls(area_ref, floor_number, is_elevator)
                 for wall in walls or []:
                     geom_map.walls.append(OBLToROSAdapter.convert_obl_shape_obj_to_ros_polygon_msg(wall))
-                pillars = self.extract_pillars(area_ref, floor_number)
+                pillars = self.extract_pillars(area_ref, floor_number, is_elevator)
                 for pillar in pillars or []:
                     geom_map.pillars.append(OBLToROSAdapter.convert_obl_shape_obj_to_ros_polygon_msg(pillar))
-                doors = self.extract_doors(area_ref, floor_number)
+                doors = self.extract_doors(area_ref, floor_number, is_elevator)
                 for door in doors or []:
                     geom_map.doors.append(OBLToROSAdapter.convert_obl_shape_obj_to_ros_polygon_msg(door))
             res.map = geom_map
@@ -66,19 +67,20 @@ class Get2DMap(object):
             area_refs = req.area_refs
 
         floor_number = req.level
+        is_elevator = req.is_elevator
         res = GetSemanticMapResponse()
         semantic_map = SemanticMap()
         semantic_map.header.frame_id = "/map"
         semantic_map.header.stamp = rospy.get_rostime()
         try:
             for area_ref in area_refs:
-                wall_sides = self.extract_wall_sides(area_ref, floor_number)
+                wall_sides = self.extract_wall_sides(area_ref, floor_number, is_elevator)
                 for wall_side in wall_sides or []:
                     semantic_map.wall_sides.append(OBLToROSAdapter.convert_obl_side_obj_to_ros_side_msg(wall_side))
-                door_sides = self.extract_door_sides(area_ref, floor_number)
+                door_sides = self.extract_door_sides(area_ref, floor_number, is_elevator)
                 for door_side in door_sides or []:
                     semantic_map.door_sides.append(OBLToROSAdapter.convert_obl_side_obj_to_ros_side_msg(door_side))
-                pillars = self.extract_pillars(area_ref, floor_number)
+                pillars = self.extract_pillars(area_ref, floor_number, is_elevator)
                 for pillar in pillars or []:
                     semantic_map.pillars.append(OBLToROSAdapter.convert_obl_pillar_obj_to_ros_pillar_msg(pillar))
             res.map = semantic_map
@@ -87,8 +89,12 @@ class Get2DMap(object):
             rospy.logerr(str(e))
             return None
 
-    def extract_walls(self, area_ref, floor_number):
-        __, wall_shapes,__ = self.osm_adapter.search_by_tag(data_type='way', key_val_dict={'level': str(floor_number),'indoor':'wall'})
+    def extract_walls(self, area_ref, floor_number, is_elevator):
+        if is_elevator:
+            self.is_wall_cache_available = False
+            __, wall_shapes,__ = self.osm_adapter.get('way[!"level"][indoor=wall];')
+        else:
+            __, wall_shapes,__ = self.osm_adapter.search_by_tag(data_type='way', key_val_dict={'level': str(floor_number),'indoor':'wall'})
         area = self.osm_bridge.get_area(area_ref) 
         area_geometry = area.geometry
         area_geometry_cached = area_geometry.points
@@ -124,8 +130,12 @@ class Get2DMap(object):
                         break
         return walls
 
-    def extract_pillars(self, area_ref, floor_number):
-        __, pillar_shapes,__ = self.osm_adapter.search_by_tag(data_type='way', key_val_dict={'level': str(floor_number),'indoor':'pillar'})
+    def extract_pillars(self, area_ref, floor_number, is_elevator):
+        if is_elevator:
+            self.is_pillar_cache_available = False
+            __, pillar_shapes,__ = self.osm_adapter.get('way[!"level"][indoor=pillar];')
+        else:
+            __, pillar_shapes,__ = self.osm_adapter.search_by_tag(data_type='way', key_val_dict={'level': str(floor_number),'indoor':'pillar'})
         area = self.osm_bridge.get_area(area_ref) 
         area_geometry = area.geometry
         area_geometry_cached = area_geometry.points
@@ -161,8 +171,13 @@ class Get2DMap(object):
                         break
         return pillars
 
-    def extract_doors(self, area_ref, floor_number):
-        __, door_shapes,__ = self.osm_adapter.search_by_tag(data_type='way', key_val_dict={'level': str(floor_number),'indoor':'door'})
+    def extract_doors(self, area_ref, floor_number, is_elevator):
+        if is_elevator:
+            self.is_door_cache_available = False
+            __, door_shapes,__ = self.osm_adapter.get('way[!"level"][indoor=door];')
+        else:
+            __, door_shapes,__ = self.osm_adapter.search_by_tag(data_type='way', key_val_dict={'level': str(floor_number),'indoor':'door'})
+        
         area = self.osm_bridge.get_area(area_ref) 
         area_geometry = area.geometry
         area_geometry_cached = area_geometry.points
@@ -198,8 +213,8 @@ class Get2DMap(object):
                         break
         return doors
 
-    def extract_wall_sides(self, area_ref, floor_number):
-        walls = self.extract_walls(area_ref, floor_number)
+    def extract_wall_sides(self, area_ref, floor_number, is_elevator):
+        walls = self.extract_walls(area_ref, floor_number, is_elevator)
         area = self.osm_bridge.get_area(area_ref) 
         area_geometry = area.geometry
         area_geometry_cached = area_geometry.points
@@ -212,8 +227,8 @@ class Get2DMap(object):
         visible_sides = self._get_visible_sides(sides, area_geometry_cached)
         return visible_sides
 
-    def extract_door_sides(self, area_ref, floor_number):
-        doors = self.extract_doors(area_ref, floor_number)
+    def extract_door_sides(self, area_ref, floor_number, is_elevator):
+        doors = self.extract_doors(area_ref, floor_number, is_elevator)
         area = self.osm_bridge.get_area(area_ref) 
         area_geometry = area.geometry
         area_geometry_cached = area_geometry.points
