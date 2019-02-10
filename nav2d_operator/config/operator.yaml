@@ -11,6 +11,9 @@ publish_route: true
 max_free_space: 3.0
 safety_decay: 0.99
 
+# Take desired direction only if its safe to move there
+desired_safety_threshold: 0.5
+
 # The importance weights of the 3 action values
 safety_weight: 1
 escape_weight: 1
