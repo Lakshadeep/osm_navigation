@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib
   std_msgs
   geometry_msgs
-  osm_nav_msgs
+  osm_planner_msgs
 )
 
 include_directories(

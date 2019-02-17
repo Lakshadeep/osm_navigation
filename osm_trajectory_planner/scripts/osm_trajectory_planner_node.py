@@ -6,7 +6,7 @@ NODE = 'osm_trajectory_planner_node'
 from OBL import OSMBridge, PathPlanner
 import rospy
 from actionlib import SimpleActionServer 
-from osm_nav_msgs.msg import *
+from osm_planner_msgs.msg import *
 from osm_trajectory_planner.osm_trajectory_planner_callback import OSMTrajectoryPlannerCallback
 
 

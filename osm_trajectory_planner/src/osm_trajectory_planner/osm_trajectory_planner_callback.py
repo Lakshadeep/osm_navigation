@@ -1,4 +1,4 @@
-from osm_nav_msgs.msg import *
+from osm_planner_msgs.msg import *
 import rospy
 import math
 from geometry_msgs.msg import Pose, Point, Quaternion

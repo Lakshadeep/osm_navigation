@@ -7,7 +7,7 @@ from OBL import OSMBridge, PathPlanner
 import rospy
 import actionlib
 from actionlib import SimpleActionServer 
-from osm_nav_msgs.msg import *
+from osm_planner_msgs.msg import *
 from osm_topological_planner.osm_topological_planner_callback import OSMTopologicalPlannerCallback
 
 
