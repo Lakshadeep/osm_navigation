@@ -13,6 +13,12 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   corridor_navigation_msgs
+  gateway_detection
+  robot_distance_monitor
+  robot_heading_monitor
+  nav2d_operator
+  gateway_msgs
+  heading_control
 )
 
 ## System dependencies are found with CMake's conventions
@@ -23,6 +29,9 @@ generate_messages(
   std_msgs
   geometry_msgs
   corridor_navigation_msgs
+  gateway_msgs
+  heading_control
+  nav2d_operator
 )
 
 ###################################
