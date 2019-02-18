@@ -1,0 +1,5 @@
+<launch>
+  <node name="corridor_navigation" pkg="corridor_navigation" type="corridor_navigation_node">
+  </node>
+</launch>
+
