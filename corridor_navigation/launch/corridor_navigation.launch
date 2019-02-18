@@ -1,5 +1,17 @@
 <launch>
   <node name="corridor_navigation" pkg="corridor_navigation" type="corridor_navigation_node">
+      <param name="gateway_detection_topic" value="/gateways_detected" />
+      <param name="distance_monitor_topic" value="/monitored_distance" />
+      <param name="heading_monitor_topic" value="/monitored_heading" />
+      <param name="desired_heading_topic" value="/desired_heading" />
+      <param name="nav2d_operator_cmd_topic" value="/cmd" />
+
+      <param name="reset_distance_monitor_service" value="/reset_distance_monitor" />
+      <param name="reset_heading_monitor_service" value="/reset_heading_monitor" />
+      <param name="heading_control_switch_service" value="/heading_control_switch" />
+
+      <param name="recovery_direction_threshold" value="0.5" />
+      <param name="correction_direction_threshold" value="0.06" />
   </node>
 </launch>
 

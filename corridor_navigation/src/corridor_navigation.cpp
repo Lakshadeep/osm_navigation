@@ -43,3 +43,20 @@ bool CorridorNavigation::determineDirection(double &computed_direction, double c
         return false;
       // enable recovery behaviour i.e stop the monitors until robot comes back in valid direction range
 }
+
+bool CorridorNavigation::isGoalReached(Gateways detected_gateways, double monitored_distance, double monitored_heading)
+{
+    if( monitored_heading > (0.8 * desired_distance_) && monitored_distance < (1.2 * desired_distance_))
+    {
+        if (monitored_heading > (desired_direction_ - 0.2) && monitored_heading < (desired_direction_ + 0.2))
+        {
+            if (goal_type == 0 && (detected_gateways.t_junction.left_turn_range > 0 || detected_gateways.t_junction.right_turn_range > 0))
+                return true;
+            else if (goal_type == 1 && detected_gateways.x_junction.left_turn_range > 0 && detected_gateways.x_junction.right_turn_range > 0)
+                return true;
+
+            // TODO: implement right/left door navigation goals
+        }
+    }  
+    return false;
+}

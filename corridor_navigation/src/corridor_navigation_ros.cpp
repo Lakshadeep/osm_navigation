@@ -8,13 +8,13 @@ CorridorNavigationROS::CorridorNavigationROS(ros::NodeHandle& nh): nh_(nh)
     gateway_detection_subscriber_ = nh_.subscribe(gateway_detection_topic_, 1, &CorridorNavigationROS::gatewayDetectionCallback, this);
     distance_monitor_subscriber_ = nh_.subscribe(distance_monitor_topic_, 1, &CorridorNavigationROS::distanceMonitorCallback, this);
     heading_monitor_subscriber_ = nh_.subscribe(heading_monitor_topic_, 1, &CorridorNavigationROS::headingMonitorCallback, this);
-    desired_heading_subscriber_ = nh_.subscribe(desired_heading_topic_, 1, &CorridorNavigationROS::desiredHeadingCallback, this);
 
     // publishers
     nav2d_operator_publisher_ = nh_.advertise<nav2d_operator::cmd>(nav2d_operator_cmd_topic_, 1);
+    desired_heading_publisher_ = nh_.advertise<std_msgs::Float32>(desired_heading_topic_, 1);
 
     // service clients
-    heading_control_switch_service_client_ = nh_.serviceClient<heading_control::Switch>(heading_control_switch_);
+    heading_control_switch_service_client_ = nh_.serviceClient<heading_control::Switch>(heading_control_switch_service_);
     heading_monitor_reset_service_client_ = nh_.serviceClient<robot_heading_monitor::Reset>(reset_heading_monitor_service_);
     distance_monitor_reset_service_client_ = nh_.serviceClient<robot_distance_monitor::Reset>(reset_distance_monitor_service_);
 }
@@ -57,10 +57,10 @@ void CorridorNavigationROS::loadParameters()
     ROS_DEBUG("reset_heading_monitor_service: %s", reset_heading_monitor_service_.c_str());
 
     // low level control
-    std::string heading_control_switch;
-    nh_.param<std::string>("heading_control_switch", heading_control_switch, "/heading_control_switch");
-    heading_control_switch_ = heading_control_switch ;
-    ROS_DEBUG("heading_control_switch service: %s", heading_control_switch.c_str());
+    std::string heading_control_switch_service;
+    nh_.param<std::string>("heading_control_switch_service", heading_control_switch_service, "/heading_control_switch");
+    heading_control_switch_service_ = heading_control_switch_service ;
+    ROS_DEBUG("heading_control_switch_service service: %s", heading_control_switch_service.c_str());
 
     std::string desired_heading_topic;
     nh_.param<std::string>("desired_heading_topic", desired_heading_topic, "/desired_heading");
@@ -87,24 +87,32 @@ void CorridorNavigationROS::loadParameters()
 
 void CorridorNavigationROS::gatewayDetectionCallback(const gateway_msgs::Gateways::ConstPtr& msg)
 {
+    detected_gateways_.hallway.left_angle = msg->hallway.left_angle;
+    detected_gateways_.hallway.right_angle = msg->hallway.right_angle;
+    detected_gateways_.hallway.right_range = msg->hallway.right_range;
+    detected_gateways_.hallway.right_range = msg->hallway.right_range;
 
+    detected_gateways_.t_junction.left_turn_angle = msg->t_junction.left_turn_angle;
+    detected_gateways_.t_junction.left_turn_range = msg->t_junction.left_turn_range;
+    detected_gateways_.t_junction.right_turn_angle = msg->t_junction.right_turn_angle;
+    detected_gateways_.t_junction.right_turn_range = msg->t_junction.right_turn_range;
+    detected_gateways_.t_junction.front_angle = msg->t_junction.front_angle;
+    detected_gateways_.t_junction.front_range = msg->t_junction.front_range;
+
+    detected_gateways_.x_junction.left_turn_angle = msg->x_junction.left_turn_angle;
+    detected_gateways_.x_junction.left_turn_range = msg->x_junction.left_turn_range;
+    detected_gateways_.x_junction.right_turn_angle = msg->x_junction.right_turn_angle;
+    detected_gateways_.x_junction.right_turn_range = msg->x_junction.right_turn_range;
+    detected_gateways_.x_junction.front_angle = msg->x_junction.front_angle;
+    detected_gateways_.x_junction.front_range = msg->x_junction.front_range;
 }
 
 void CorridorNavigationROS::distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg)
 {
-
+    monitored_distance_ = msg->data;
 }
 
 void CorridorNavigationROS::headingMonitorCallback(const std_msgs::Float32::ConstPtr& msg)
 {
-
+    monitored_heading_ = msg->data;
 }
-
-void CorridorNavigationROS::desiredHeadingCallback(const std_msgs::Float32::ConstPtr& msg)
-{
-
-}
-
-
-
-
