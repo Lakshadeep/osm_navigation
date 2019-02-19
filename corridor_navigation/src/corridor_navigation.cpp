@@ -1,7 +1,7 @@
 #include <corridor_navigation/corridor_navigation.h>
 
 CorridorNavigation::CorridorNavigation():desired_direction_(0), recovery_direction_threshold_(0.5), 
-correction_direction_threshold_(0.06)
+correction_direction_threshold_(0.06), desired_distance_(0), goal_type_(-1)
 {
 }
 
@@ -50,13 +50,27 @@ bool CorridorNavigation::isGoalReached(Gateways detected_gateways, double monito
     {
         if (monitored_heading > (desired_direction_ - 0.2) && monitored_heading < (desired_direction_ + 0.2))
         {
-            if (goal_type == 0 && (detected_gateways.t_junction.left_turn_range > 0 || detected_gateways.t_junction.right_turn_range > 0))
+            if (goal_type_ == 0 && (detected_gateways.t_junction.left_turn_range > 0 || detected_gateways.t_junction.right_turn_range > 0))
                 return true;
-            else if (goal_type == 1 && detected_gateways.x_junction.left_turn_range > 0 && detected_gateways.x_junction.right_turn_range > 0)
+            else if (goal_type_ == 1 && detected_gateways.x_junction.left_turn_range > 0 && detected_gateways.x_junction.right_turn_range > 0)
                 return true;
 
             // TODO: implement right/left door navigation goals
         }
     }  
     return false;
+}
+
+void CorridorNavigation::setGoal(int goal, double direction, double distance)
+{
+    goal_type_ = goal;
+    desired_direction_ = direction;
+    desired_distance_ = distance;
+}
+
+void CorridorNavigation::reset()
+{
+    desired_direction_ = 0;
+    desired_distance_ = 0;
+    goal_type_ = -1;
 }

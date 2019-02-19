@@ -1,6 +1,7 @@
 #include "corridor_navigation/corridor_navigation_ros.h"
 
-CorridorNavigationROS::CorridorNavigationROS(ros::NodeHandle& nh): nh_(nh)
+CorridorNavigationROS::CorridorNavigationROS(ros::NodeHandle& nh): nh_(nh), corridor_navigation_server_(nh,"/corridor_navigation_server",
+  boost::bind(&CorridorNavigationROS::CorridorNavigationExecute, this, _1),false), monitored_heading_(0), monitored_distance_(0)
 {
     loadParameters(); 
     
@@ -25,6 +26,52 @@ CorridorNavigationROS::~CorridorNavigationROS()
 
 void CorridorNavigationROS::run()
 {
+}
+
+void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_msgs::CorridorNavigationGoalConstPtr& goal)
+{
+    corridor_navigation_.setGoal(goal->goal_type, goal->direction, goal->distance);
+    ros::Rate r(controller_frequency_);
+    while(nh_.ok())
+    {
+        if(corridor_navigation_server_.isPreemptRequested())
+        {
+            reset();
+
+            //notify the ActionServer that we've successfully preempted
+            ROS_DEBUG_NAMED("corridor_navigation", "Corridor navigation preempting the current goal");
+            corridor_navigation_server_.setPreempted();
+
+            return;
+        }
+        else
+        {
+            corridor_navigation_msgs::CorridorNavigationFeedback feedback;
+            feedback.distance_travelled = monitored_distance_;
+            feedback.current_direction = monitored_heading_;
+
+            double desired_direction;
+
+            if (corridor_navigation_.determineDirection(desired_direction, monitored_heading_, detected_gateways_.hallway.left_angle, 
+            detected_gateways_.hallway.left_range, detected_gateways_.hallway.right_angle, detected_gateways_.hallway.right_angle))
+            {
+                feedback.desired_direction = desired_direction;
+            }
+            else
+            {
+                feedback.recovery_mode = 1;
+            }
+
+            corridor_navigation_server_.publishFeedback(feedback);   
+
+            if (corridor_navigation_.isGoalReached(detected_gateways_, monitored_distance_, monitored_heading_))
+            {
+                reset();
+                corridor_navigation_server_.setSucceeded(corridor_navigation_msgs::CorridorNavigationResult(), "Goal reached");
+                return;
+            }
+        }
+    }
 }
 
 void CorridorNavigationROS::loadParameters()
@@ -83,13 +130,18 @@ void CorridorNavigationROS::loadParameters()
     nh_.param<double>("correction_direction_threshold", correction_direction_threshold, 0.06);
     corridor_navigation_.setCorrectionDirectionThreshold(correction_direction_threshold);
     ROS_DEBUG("correction_direction_threshold: %f", correction_direction_threshold);
+
+    int controller_frequency;
+    nh_.param<int>("controller_frequency", controller_frequency, 20);
+    controller_frequency_ = controller_frequency;
+    ROS_DEBUG("controller_frequency: %d", controller_frequency);
 }
 
 void CorridorNavigationROS::gatewayDetectionCallback(const gateway_msgs::Gateways::ConstPtr& msg)
 {
     detected_gateways_.hallway.left_angle = msg->hallway.left_angle;
     detected_gateways_.hallway.right_angle = msg->hallway.right_angle;
-    detected_gateways_.hallway.right_range = msg->hallway.right_range;
+    detected_gateways_.hallway.left_range = msg->hallway.left_range;
     detected_gateways_.hallway.right_range = msg->hallway.right_range;
 
     detected_gateways_.t_junction.left_turn_angle = msg->t_junction.left_turn_angle;
@@ -115,4 +167,16 @@ void CorridorNavigationROS::distanceMonitorCallback(const std_msgs::Float32::Con
 void CorridorNavigationROS::headingMonitorCallback(const std_msgs::Float32::ConstPtr& msg)
 {
     monitored_heading_ = msg->data;
+}
+
+void CorridorNavigationROS::resetMonitors()
+{
+    monitored_heading_ = 0;
+    monitored_distance_ = 0;
+}
+
+void CorridorNavigationROS::reset()
+{
+    corridor_navigation_.reset();
+    resetMonitors();
 }

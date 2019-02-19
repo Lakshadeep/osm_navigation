@@ -16,6 +16,8 @@ public:
     bool determineDirection(double &computed_direction, double curr_direction, double left_ref_direction, 
                             double left_ref_range, double right_ref_direction, double right_ref_range);
     bool isGoalReached(Gateways detected_gateways, double monitored_distance, double monitored_heading);
+    void setGoal(int goal, double direction, double distance);
+    void reset();
 
 private:
     // params
@@ -26,7 +28,7 @@ private:
     double desired_direction_;
     double desired_distance_;
     // 0 : T-junction | 1 : X-junction | 2 : left door | 3 : right door
-    int goal_type; 
+    int goal_type_; 
 
 
 

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <ros/ros.h>
+#include <actionlib/server/simple_action_server.h>
 #include <corridor_navigation/corridor_navigation.h>
 #include <corridor_navigation/structs.h>
 
@@ -10,6 +11,7 @@
 #include <gateway_msgs/gateways.h>
 #include <std_msgs/Float32.h>
 #include <nav2d_operator/cmd.h>
+#include <corridor_navigation_msgs/CorridorNavigationAction.h>
 
 // ROS services
 #include <heading_control/Switch.h>
@@ -44,6 +46,8 @@ private:
     ros::ServiceClient heading_monitor_reset_service_client_;
     ros::ServiceClient distance_monitor_reset_service_client_;
 
+    actionlib::SimpleActionServer<corridor_navigation_msgs::CorridorNavigationAction> corridor_navigation_server_;
+
     // subscriber callbacks
     void gatewayDetectionCallback(const gateway_msgs::Gateways::ConstPtr& msg);
     void distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg);
@@ -61,6 +65,8 @@ private:
     std::string reset_distance_monitor_service_;
     std::string reset_heading_monitor_service_;
 
+    int controller_frequency_;
+
     // corridor navigation
     CorridorNavigation corridor_navigation_;
 
@@ -72,6 +78,13 @@ private:
     // 2. monitors
     double monitored_distance_;
     double monitored_heading_;
+
+    // action server callbacks
+    void CorridorNavigationExecute(const corridor_navigation_msgs::CorridorNavigationGoalConstPtr& goal);
+
+    // reset
+    void resetMonitors();
+    void reset();
 };
 
 #endif
