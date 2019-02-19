@@ -10,15 +10,12 @@
 // ROS messages
 #include <gateway_msgs/gateways.h>
 #include <std_msgs/Float32.h>
-#include <nav2d_operator/cmd.h>
 #include <corridor_navigation_msgs/CorridorNavigationAction.h>
 
 // ROS services
 #include <heading_control/Switch.h>
 #include <robot_distance_monitor/Reset.h>
 #include <robot_heading_monitor/Reset.h>
-
-
 
 class CorridorNavigationROS
 {
@@ -82,9 +79,11 @@ private:
     // action server callbacks
     void CorridorNavigationExecute(const corridor_navigation_msgs::CorridorNavigationGoalConstPtr& goal);
 
-    // reset
+    // ROS related helper functions
     void resetMonitors();
     void reset();
+    void enableHeadingController();
+    void disableHeadingController();
 };
 
 #endif

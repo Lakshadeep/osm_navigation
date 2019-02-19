@@ -11,7 +11,6 @@ CorridorNavigationROS::CorridorNavigationROS(ros::NodeHandle& nh): nh_(nh), corr
     heading_monitor_subscriber_ = nh_.subscribe(heading_monitor_topic_, 1, &CorridorNavigationROS::headingMonitorCallback, this);
 
     // publishers
-    nav2d_operator_publisher_ = nh_.advertise<nav2d_operator::cmd>(nav2d_operator_cmd_topic_, 1);
     desired_heading_publisher_ = nh_.advertise<std_msgs::Float32>(desired_heading_topic_, 1);
 
     // service clients
@@ -30,14 +29,18 @@ void CorridorNavigationROS::run()
 
 void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_msgs::CorridorNavigationGoalConstPtr& goal)
 {
+    reset();
     corridor_navigation_.setGoal(goal->goal_type, goal->direction, goal->distance);
     ros::Rate r(controller_frequency_);
+
+    enableHeadingController();
+
     while(nh_.ok())
     {
         if(corridor_navigation_server_.isPreemptRequested())
         {
             reset();
-
+            disableHeadingController();
             //notify the ActionServer that we've successfully preempted
             ROS_DEBUG_NAMED("corridor_navigation", "Corridor navigation preempting the current goal");
             corridor_navigation_server_.setPreempted();
@@ -56,6 +59,9 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_
             detected_gateways_.hallway.left_range, detected_gateways_.hallway.right_angle, detected_gateways_.hallway.right_angle))
             {
                 feedback.desired_direction = desired_direction;
+                std_msgs::Float32 desired_direction_msg;
+                desired_direction_msg.data = desired_direction;
+                desired_heading_publisher_.publish(desired_direction_msg);
             }
             else
             {
@@ -67,6 +73,7 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_
             if (corridor_navigation_.isGoalReached(detected_gateways_, monitored_distance_, monitored_heading_))
             {
                 reset();
+                disableHeadingController();
                 corridor_navigation_server_.setSucceeded(corridor_navigation_msgs::CorridorNavigationResult(), "Goal reached");
                 return;
             }
@@ -171,8 +178,57 @@ void CorridorNavigationROS::headingMonitorCallback(const std_msgs::Float32::Cons
 
 void CorridorNavigationROS::resetMonitors()
 {
-    monitored_heading_ = 0;
-    monitored_distance_ = 0;
+    robot_heading_monitor::Reset heading_reset_srv;
+    heading_reset_srv.request.reset = true;
+    if (heading_monitor_reset_service_client_.call(heading_reset_srv))
+    {
+        ROS_DEBUG("Heading monitor successfully reset");
+        monitored_heading_ = 0;
+    }
+    else
+    {
+        ROS_ERROR("Failed to reset heading monitor");
+    }
+
+    robot_distance_monitor::Reset distance_reset_srv;
+    distance_reset_srv.request.reset = true;
+    if (distance_monitor_reset_service_client_.call(distance_reset_srv))
+    {
+        ROS_DEBUG("Distance monitor successfully reset");
+        monitored_distance_ = 0;
+    }
+    else
+    {
+        ROS_ERROR("Failed to reset distance monitor");
+    }
+}
+
+void CorridorNavigationROS::enableHeadingController()
+{
+    robot_heading_monitor::Reset heading_control_switch_service_client_;
+    heading_control_switch_service_client_.request.reset = true;
+    if (heading_monitor_reset_service_client_.call(heading_control_switch_service_client_))
+    {
+        ROS_DEBUG("Heading controller successfully enabled");
+    }
+    else
+    {
+        ROS_ERROR("Failed to enable heading controller");
+    }
+}
+
+void CorridorNavigationROS::disableHeadingController()
+{
+    robot_heading_monitor::Reset heading_control_switch_service_client_;
+    heading_control_switch_service_client_.request.reset = false;
+    if (heading_monitor_reset_service_client_.call(heading_control_switch_service_client_))
+    {
+        ROS_DEBUG("Heading controller successfully disabled");
+    }
+    else
+    {
+        ROS_ERROR("Failed to disable heading controller");
+    }
 }
 
 void CorridorNavigationROS::reset()
