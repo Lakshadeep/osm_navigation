@@ -5,7 +5,7 @@
 
 #define PI 3.14159265
 
-RobotOperator::RobotOperator() : mTf2Buffer(), mTf2Listener(mTf2Buffer), mTfListener(ros::Duration(0.1))
+RobotOperator::RobotOperator() : mTf2Buffer(), mTf2Listener(mTf2Buffer), mTfListener(ros::Duration(0.5))
 {
     // Create the local costmap
     mLocalMap = new costmap_2d::Costmap2DROS(std::string("local_map"), mTfListener);
