@@ -25,6 +25,8 @@ CorridorNavigationROS::~CorridorNavigationROS()
 
 void CorridorNavigationROS::run()
 {
+    corridor_navigation_server_.start();
+    ROS_INFO("Corridor navigation action server started");
 }
 
 void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_msgs::CorridorNavigationGoalConstPtr& goal)
@@ -78,6 +80,8 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_
                 return;
             }
         }
+
+        r.sleep();
     }
 }
 
@@ -121,12 +125,6 @@ void CorridorNavigationROS::loadParameters()
     desired_heading_topic_ = desired_heading_topic;
     ROS_DEBUG("desired_heading_topic: %s", desired_heading_topic_.c_str());
 
-    // navigation operator
-    std::string nav2d_operator_cmd_topic;
-    nh_.param<std::string>("nav2d_operator_cmd_topic", nav2d_operator_cmd_topic, "/cmd");
-    nav2d_operator_cmd_topic_ = nav2d_operator_cmd_topic;
-    ROS_DEBUG("nav2d_operator_cmd_topic: %s", nav2d_operator_cmd_topic_.c_str());
-
     // corridor navigation params
     double recovery_direction_threshold;
     nh_.param<double>("recovery_direction_threshold", recovery_direction_threshold, 0.5);
@@ -139,7 +137,7 @@ void CorridorNavigationROS::loadParameters()
     ROS_DEBUG("correction_direction_threshold: %f", correction_direction_threshold);
 
     int controller_frequency;
-    nh_.param<int>("controller_frequency", controller_frequency, 20);
+    nh_.param<int>("controller_frequency", controller_frequency, 10);
     controller_frequency_ = controller_frequency;
     ROS_DEBUG("controller_frequency: %d", controller_frequency);
 }
@@ -205,9 +203,9 @@ void CorridorNavigationROS::resetMonitors()
 
 void CorridorNavigationROS::enableHeadingController()
 {
-    robot_heading_monitor::Reset heading_control_switch_service_client_;
-    heading_control_switch_service_client_.request.reset = true;
-    if (heading_monitor_reset_service_client_.call(heading_control_switch_service_client_))
+    heading_control::Switch heading_control_switch_service_msg;
+    heading_control_switch_service_msg.request.enable = true;
+    if (heading_control_switch_service_client_.call(heading_control_switch_service_msg))
     {
         ROS_DEBUG("Heading controller successfully enabled");
     }
@@ -219,9 +217,9 @@ void CorridorNavigationROS::enableHeadingController()
 
 void CorridorNavigationROS::disableHeadingController()
 {
-    robot_heading_monitor::Reset heading_control_switch_service_client_;
-    heading_control_switch_service_client_.request.reset = false;
-    if (heading_monitor_reset_service_client_.call(heading_control_switch_service_client_))
+    heading_control::Switch heading_control_switch_service_msg;
+    heading_control_switch_service_msg.request.enable = false;
+    if (heading_control_switch_service_client_.call(heading_control_switch_service_msg))
     {
         ROS_DEBUG("Heading controller successfully disabled");
     }

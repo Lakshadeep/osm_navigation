@@ -104,5 +104,31 @@ Reactive navigation. Builds and uses local cost map to move in a user specified 
 `roslaunch nav2d_operator nav2d_operator.launch`
 
 
+## Corridor navigation
+Performs heading based navigation w.r.t a certain reference feature
 
+#### Subscribed topics
+* gateways
+* distance monitor
+* heading monitor
 
+#### Published topics
+* desired heading 
+
+#### Required services
+* heading control switch
+* heading monitor reset
+* distance monitor reset
+
+#### Launch
+`roslaunch corridor_navigation corridor_navigation.launch`
+
+#### Tests
+```
+rosrun actionlib axclient.py  "/corridor_navigation_server" corridor_navigation_msgs/CorridorNavigationAction
+
+goal_id: 1
+direction: 0.0
+distance: 12.0
+goal_type: 0
+```

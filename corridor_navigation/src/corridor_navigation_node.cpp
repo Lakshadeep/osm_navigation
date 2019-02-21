@@ -15,16 +15,9 @@ int main(int argc, char **argv)
     ros::NodeHandle nh("~");
     CorridorNavigationROS corridor_navigation_ros(nh);
 
-    double frequency;
-    nh.param<double>("frequency", frequency, 10);
-    ROS_DEBUG("Frequency set to %0.1f Hz", frequency);
-    ros::Rate rate(frequency);
+    corridor_navigation_ros.run();
+    
+    ros::spin();
 
-    while (ros::ok())
-    {
-        corridor_navigation_ros.run();
-        ros::spinOnce();
-        rate.sleep();
-    }
     return 0;
 }

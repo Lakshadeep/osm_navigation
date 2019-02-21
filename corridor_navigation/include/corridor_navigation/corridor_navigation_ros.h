@@ -26,7 +26,6 @@ public:
     ~CorridorNavigationROS();
     void loadParameters();
 
-    // Running
     void run();
 
 private:
@@ -56,7 +55,6 @@ private:
     std::string distance_monitor_topic_;
     std::string heading_monitor_topic_;
     std::string desired_heading_topic_;
-    std::string nav2d_operator_cmd_topic_;
 
     std::string heading_control_switch_service_;
     std::string reset_distance_monitor_service_;

@@ -46,7 +46,7 @@ bool CorridorNavigation::determineDirection(double &computed_direction, double c
 
 bool CorridorNavigation::isGoalReached(Gateways detected_gateways, double monitored_distance, double monitored_heading)
 {
-    if( monitored_heading > (0.8 * desired_distance_) && monitored_distance < (1.2 * desired_distance_))
+    if( monitored_distance > (0.8 * desired_distance_) && monitored_distance < (1.2 * desired_distance_))
     {
         if (monitored_heading > (desired_direction_ - 0.2) && monitored_heading < (desired_direction_ + 0.2))
         {
