@@ -36,12 +36,12 @@ bool CorridorNavigation::determineDirection(double &computed_direction, double c
             computed_direction = desired_direction_ + (left_ref_direction + right_ref_direction)/2.0;
 
             if (fabs(left_ref_direction - right_ref_direction) < correction_direction_threshold_)
-                desired_direction_ = (left_ref_direction + right_ref_direction)/2.0;
+                desired_direction_ = curr_direction + (left_ref_direction + right_ref_direction)/2.0;
         }
         else if (left_ref_range > 0)
-            computed_direction = left_ref_direction;
+            computed_direction = curr_direction + left_ref_direction;
         else if (right_ref_range > 0)
-            computed_direction = right_ref_direction;
+            computed_direction = curr_direction + right_ref_direction;
         return true;
     }
     else

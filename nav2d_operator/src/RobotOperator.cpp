@@ -213,8 +213,8 @@ void RobotOperator::executeCommand()
         desiredDirectionVal = evaluateAction(mDesiredDirection, mCurrentVelocity, false);
         if (desiredDirectionVal >= mDesiredSafetyThreshold) bestDirection = mDesiredDirection;
         d = bestDirection - mCurrentDirection;
-        if (d < -0.2) d = -0.2;
-        if (d > 0.2) d = 0.2;
+        // if (d < -0.2) d = -0.2;
+        // if (d > 0.2) d = 0.2;
         mCurrentDirection += d;
         mCurrentVelocity = mDesiredVelocity;
         break;
