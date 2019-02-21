@@ -19,6 +19,11 @@ void CorridorNavigation::setCorrectionDirectionThreshold(double correction_direc
     correction_direction_threshold_ = correction_direction_threshold;
 }
 
+void CorridorNavigation::setNominalVelocity(double nominal_velocity)
+{
+    nominal_velocity_ = nominal_velocity;
+}
+
 bool CorridorNavigation::determineDirection(double &computed_direction, double curr_direction, double left_ref_direction, 
                                             double left_ref_range, double right_ref_direction, double right_ref_range)
 {
@@ -48,7 +53,7 @@ bool CorridorNavigation::isGoalReached(Gateways detected_gateways, double monito
 {
     if( monitored_distance > (0.8 * desired_distance_) && monitored_distance < (1.2 * desired_distance_))
     {
-        if (monitored_heading > (desired_direction_ - 0.2) && monitored_heading < (desired_direction_ + 0.2))
+        if (monitored_heading > (desired_direction_ - 0.4) && monitored_heading < (desired_direction_ + 0.4))
         {
             if (goal_type_ == 0 && (detected_gateways.t_junction.left_turn_range > 0 || detected_gateways.t_junction.right_turn_range > 0))
                 return true;
@@ -59,6 +64,23 @@ bool CorridorNavigation::isGoalReached(Gateways detected_gateways, double monito
         }
     }  
     return false;
+}
+
+double CorridorNavigation::computeVelocity(double monitored_distance, double monitored_heading)
+{
+    double velocity = nominal_velocity_;
+
+    if( monitored_distance > (0.8 * desired_distance_) && monitored_distance < (1.2 * desired_distance_))
+    {
+        velocity = 0.7 * nominal_velocity_;
+    }  
+
+    if (monitored_heading < (desired_direction_ - 0.4) || monitored_heading > (desired_direction_ + 0.4))
+    {
+        velocity = 0.5 * nominal_velocity_;
+    }
+    
+    return velocity;
 }
 
 void CorridorNavigation::setGoal(int goal, double direction, double distance)

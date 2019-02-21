@@ -12,6 +12,7 @@ CorridorNavigationROS::CorridorNavigationROS(ros::NodeHandle& nh): nh_(nh), corr
 
     // publishers
     desired_heading_publisher_ = nh_.advertise<std_msgs::Float32>(desired_heading_topic_, 1);
+    desired_velocity_publisher_ = nh_.advertise<std_msgs::Float32>(desired_velocity_topic_, 1);
 
     // service clients
     heading_control_switch_service_client_ = nh_.serviceClient<heading_control::Switch>(heading_control_switch_service_);
@@ -35,6 +36,9 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_
     corridor_navigation_.setGoal(goal->goal_type, goal->direction, goal->distance);
     ros::Rate r(controller_frequency_);
 
+    std_msgs::Float32 desired_direction_msg;
+    std_msgs::Float32 desired_velocity_msg;
+
     enableHeadingController();
 
     while(nh_.ok())
@@ -55,21 +59,22 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_
             feedback.distance_travelled = monitored_distance_;
             feedback.current_direction = monitored_heading_;
 
-            double desired_direction;
+            double desired_direction, desired_velocity;
 
             if (corridor_navigation_.determineDirection(desired_direction, monitored_heading_, detected_gateways_.hallway.left_angle, 
             detected_gateways_.hallway.left_range, detected_gateways_.hallway.right_angle, detected_gateways_.hallway.right_angle))
-            {
-                feedback.desired_direction = desired_direction;
-                std_msgs::Float32 desired_direction_msg;
-                desired_direction_msg.data = desired_direction;
-                desired_heading_publisher_.publish(desired_direction_msg);
+            {   
+                desired_velocity = corridor_navigation_.computeVelocity(monitored_distance_, monitored_heading_);
             }
             else
             {
                 feedback.recovery_mode = 1;
             }
 
+            desired_direction_msg.data = desired_direction;
+            desired_heading_publisher_.publish(desired_direction_msg);
+            
+            feedback.desired_direction = desired_direction;
             corridor_navigation_server_.publishFeedback(feedback);   
 
             if (corridor_navigation_.isGoalReached(detected_gateways_, monitored_distance_, monitored_heading_))
@@ -77,8 +82,11 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_
                 reset();
                 disableHeadingController();
                 corridor_navigation_server_.setSucceeded(corridor_navigation_msgs::CorridorNavigationResult(), "Goal reached");
+                desired_velocity = 0;
                 return;
             }
+            desired_velocity_msg.data = desired_velocity;
+            desired_velocity_publisher_.publish(desired_velocity_msg);
         }
 
         r.sleep();
@@ -125,6 +133,11 @@ void CorridorNavigationROS::loadParameters()
     desired_heading_topic_ = desired_heading_topic;
     ROS_DEBUG("desired_heading_topic: %s", desired_heading_topic_.c_str());
 
+    std::string desired_velocity_topic;
+    nh_.param<std::string>("desired_velocity_topic", desired_velocity_topic, "/desired_velocity");
+    desired_velocity_topic_ = desired_velocity_topic;
+    ROS_DEBUG("desired_velocity_topic: %s", desired_velocity_topic_.c_str());
+
     // corridor navigation params
     double recovery_direction_threshold;
     nh_.param<double>("recovery_direction_threshold", recovery_direction_threshold, 0.5);
@@ -135,6 +148,11 @@ void CorridorNavigationROS::loadParameters()
     nh_.param<double>("correction_direction_threshold", correction_direction_threshold, 0.06);
     corridor_navigation_.setCorrectionDirectionThreshold(correction_direction_threshold);
     ROS_DEBUG("correction_direction_threshold: %f", correction_direction_threshold);
+
+    double velocity;
+    nh_.param<double>("velocity", velocity, 0.3);
+    corridor_navigation_.setNominalVelocity(velocity);
+    ROS_DEBUG("velocity: %f", velocity);
 
     int controller_frequency;
     nh_.param<int>("controller_frequency", controller_frequency, 10);

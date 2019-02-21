@@ -35,8 +35,8 @@ private:
     ros::Subscriber distance_monitor_subscriber_;
     ros::Subscriber heading_monitor_subscriber_;
 
-    ros::Publisher nav2d_operator_publisher_;
     ros::Publisher desired_heading_publisher_;
+    ros::Publisher desired_velocity_publisher_;
 
     ros::ServiceClient heading_control_switch_service_client_;
     ros::ServiceClient heading_monitor_reset_service_client_;
@@ -55,6 +55,7 @@ private:
     std::string distance_monitor_topic_;
     std::string heading_monitor_topic_;
     std::string desired_heading_topic_;
+    std::string desired_velocity_topic_;
 
     std::string heading_control_switch_service_;
     std::string reset_distance_monitor_service_;
