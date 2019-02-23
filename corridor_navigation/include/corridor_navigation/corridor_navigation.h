@@ -16,6 +16,7 @@ public:
     void setNominalVelocity(double nominal_velocity);
     bool determineDirection(double &computed_direction, double curr_direction, double left_ref_direction, 
                             double left_ref_range, double right_ref_direction, double right_ref_range);
+    bool isCorrectDirection(double left_ref_direction, double left_ref_range, double right_ref_direction, double right_ref_range);
     bool isGoalReached(Gateways detected_gateways, double monitored_distance, double monitored_heading);
     double computeVelocity(double monitored_distance, double monitored_heading);
     void setGoal(int goal, double direction, double distance);

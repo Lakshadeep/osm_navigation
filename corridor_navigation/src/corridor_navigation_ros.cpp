@@ -62,9 +62,15 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_
             double desired_direction, desired_velocity;
 
             if (corridor_navigation_.determineDirection(desired_direction, monitored_heading_, detected_gateways_.hallway.left_angle, 
-            detected_gateways_.hallway.left_range, detected_gateways_.hallway.right_angle, detected_gateways_.hallway.right_angle))
+            detected_gateways_.hallway.left_range, detected_gateways_.hallway.right_angle, detected_gateways_.hallway.right_range))
             {   
                 desired_velocity = corridor_navigation_.computeVelocity(monitored_distance_, monitored_heading_);
+
+                if(corridor_navigation_.isCorrectDirection(detected_gateways_.hallway.left_angle, detected_gateways_.hallway.left_range, 
+                detected_gateways_.hallway.right_angle, detected_gateways_.hallway.right_range))
+                {
+                    ResetHeadingMonitor();
+                }
             }
             else
             {
@@ -194,6 +200,12 @@ void CorridorNavigationROS::headingMonitorCallback(const std_msgs::Float32::Cons
 
 void CorridorNavigationROS::resetMonitors()
 {
+    ResetHeadingMonitor();
+    ResetDistanceMonitor();
+}
+
+void CorridorNavigationROS::ResetHeadingMonitor()
+{
     robot_heading_monitor::Reset heading_reset_srv;
     heading_reset_srv.request.reset = true;
     if (heading_monitor_reset_service_client_.call(heading_reset_srv))
@@ -205,7 +217,10 @@ void CorridorNavigationROS::resetMonitors()
     {
         ROS_ERROR("Failed to reset heading monitor");
     }
+}
 
+void CorridorNavigationROS::ResetDistanceMonitor()
+{ 
     robot_distance_monitor::Reset distance_reset_srv;
     distance_reset_srv.request.reset = true;
     if (distance_monitor_reset_service_client_.call(distance_reset_srv))

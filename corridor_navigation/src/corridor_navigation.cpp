@@ -32,14 +32,9 @@ bool CorridorNavigation::determineDirection(double &computed_direction, double c
     { 
         // NOTE: both the ranges greater then 0 indicates both are valid ref angles 
         if(left_ref_range > 0  && right_ref_range > 0)
-        {
-            computed_direction = desired_direction_ + (left_ref_direction + right_ref_direction)/2.0;
-
-            if (fabs(left_ref_direction - right_ref_direction) < correction_direction_threshold_)
-                desired_direction_ = curr_direction + (left_ref_direction + right_ref_direction)/2.0;
-        }
+            computed_direction = (left_ref_direction + right_ref_direction)/2.0;
         else if (left_ref_range > 0)
-            computed_direction = curr_direction + left_ref_direction;
+            computed_direction = curr_direction + left_ref_direction;  
         else if (right_ref_range > 0)
             computed_direction = curr_direction + right_ref_direction;
         return true;
@@ -47,6 +42,17 @@ bool CorridorNavigation::determineDirection(double &computed_direction, double c
     else
         return false;
       // enable recovery behaviour i.e stop the monitors until robot comes back in valid direction range
+}
+
+bool CorridorNavigation::isCorrectDirection(double left_ref_direction, double left_ref_range, 
+                                            double right_ref_direction, double right_ref_range)
+{
+    if(left_ref_range > 0  && right_ref_range > 0)
+    {
+        if (fabs(left_ref_direction - right_ref_direction) < correction_direction_threshold_)
+            return true;
+    }
+    return false;
 }
 
 bool CorridorNavigation::isGoalReached(Gateways detected_gateways, double monitored_distance, double monitored_heading)
