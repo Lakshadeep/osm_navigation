@@ -8,7 +8,7 @@
 #include <corridor_navigation/structs.h>
 
 // ROS messages
-#include <gateway_msgs/gateways.h>
+#include <gateway_msgs/Gateways.h>
 #include <std_msgs/Float32.h>
 #include <corridor_navigation_msgs/CorridorNavigationAction.h>
 

@@ -13,8 +13,6 @@ RobotOperator::RobotOperator() : mTf2Buffer(), mTf2Listener(mTf2Buffer), mTfList
 
     // Publish / subscribe to ROS topics
     ros::NodeHandle robotNode;
-    robotNode.param("robot_frame", mRobotFrame, std::string("base_link"));
-    robotNode.param("odometry_frame", mOdometryFrame, std::string("odom"));
     mCommandSubscriber = robotNode.subscribe("cmd", 1, &RobotOperator::receiveCommand, this);
     mControlPublisher = robotNode.advertise<geometry_msgs::Twist>("/ropod/cmd_vel", 1);
     mCostPublisher = robotNode.advertise<geometry_msgs::Vector3>("costs", 1);
@@ -28,6 +26,9 @@ RobotOperator::RobotOperator() : mTf2Buffer(), mTf2Listener(mTf2Buffer), mTfList
         mTrajectoryPublisher = operatorNode.advertise<nav_msgs::GridCells>(ROUTE_TOPIC, 1);
         mPlanPublisher = operatorNode.advertise<nav_msgs::GridCells>(PLAN_TOPIC, 1);
     }
+
+    operatorNode.param("robot_frame", mRobotFrame, std::string("ropod/base_link"));
+    operatorNode.param("odometry_frame", mOdometryFrame, std::string("ropod/odom"));
     operatorNode.param("max_free_space", mMaxFreeSpace, 5.0);
     operatorNode.param("safety_decay", mSafetyDecay, 0.95);
     operatorNode.param("safety_weight", mSafetyWeight, 1);
