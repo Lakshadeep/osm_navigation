@@ -1,10 +1,4 @@
 <launch>
-  <node name="Operator" pkg="nav2d_operator" type="operator" >
-    <remap from="scan" to="/ropod/laser/scan"/>
-    <rosparam file="$(find nav2d_operator)/config/operator.yaml"/>
-    <rosparam file="$(find nav2d_operator)/config/costmap.yaml" ns="local_map" />
-  </node>
-
   <node name="corridor_navigation" pkg="corridor_navigation" type="corridor_navigation_node">
     <param name="gateway_detection_topic" value="/gateways_detected" />
     <param name="distance_monitor_topic" value="/monitored_distance" />

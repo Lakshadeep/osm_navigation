@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   heading_control
   actionlib_msgs
   actionlib
+  motion_control
 )
 
 ## System dependencies are found with CMake's conventions

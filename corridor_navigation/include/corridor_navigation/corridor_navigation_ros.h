@@ -16,6 +16,9 @@
 #include <heading_control/Switch.h>
 #include <robot_distance_monitor/Reset.h>
 #include <robot_heading_monitor/Reset.h>
+#include <motion_control/Switch.h>
+#include <motion_control/Params.h>
+#include <motion_control/DriveMode.h>
 
 class CorridorNavigationROS
 {
@@ -42,6 +45,10 @@ private:
     ros::ServiceClient heading_monitor_reset_service_client_;
     ros::ServiceClient distance_monitor_reset_service_client_;
 
+    ros::ServiceClient motion_control_switch_service_client_;
+    ros::ServiceClient motion_control_params_service_client_;
+    ros::ServiceClient motion_control_drive_mode_service_client_;
+
     actionlib::SimpleActionServer<corridor_navigation_msgs::CorridorNavigationAction> corridor_navigation_server_;
 
     // subscriber callbacks
@@ -60,6 +67,9 @@ private:
     std::string heading_control_switch_service_;
     std::string reset_distance_monitor_service_;
     std::string reset_heading_monitor_service_;
+    std::string motion_control_switch_service_;
+    std::string motion_control_params_service_;
+    std::string motion_control_drive_mode_service_;
 
     int controller_frequency_;
 
@@ -85,6 +95,10 @@ private:
     void reset();
     void enableHeadingController();
     void disableHeadingController();
+    void enableMotionController();
+    void disableMotionController();
+    void setMotionControllerParams(double inflation_radius);
+    void setMotionControllerDriveMode(int drive_mode);
 };
 
 #endif
