@@ -67,19 +67,42 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
                 if(door_passing_.computeInitialOrientation(goal->door, detected_gateways_))
                     resetHeadingMonitor();
 
-                if(!door_passing_.isInitialOrientationCorrect(monitored_heading_))
+                desired_direction_msg.data = door_passing_.getInitialOrientation();
+                desired_velocity_msg.data = 0.1;
+
+                if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
-                    desired_direction_msg.data = door_passing_.getInitialOrientation();
-                    desired_velocity_msg.data = 0.1;
+                    if(door_passing_.setGoal(goal->door, detected_gateways_))
+                    {
+                        setMotionControllerDriveMode(1);
+                        resetHeadingMonitor();
+                        resetDistanceMonitor();
+                    }
+                    else
+                    {
+                        disableHeadingController();
+                        disableMotionController();
+                        ROS_DEBUG_NAMED("door_passing", "Aborting the current goal");
+                        door_passing_server_.setAborted();
+                        return;
+                    }
                 }
-                else
+
+            }
+            else if (door_passing_.getState() == 0)
+            {
+                
+                desired_direction_msg.data = 0;
+                desired_velocity_msg.data = 0.1;
+
+
+                if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
                     disableHeadingController();
                     disableMotionController();
                     door_passing_server_.setSucceeded(door_passing::DoorPassingResult(), "Goal reached");
                     return;
                 }
-
             }
 
 
@@ -106,10 +129,11 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
             //     door_passing_server_.setAborted();
             //     return;
             // }  
+
+            desired_heading_publisher_.publish(desired_direction_msg);
+            desired_velocity_publisher_.publish(desired_velocity_msg);
         }
 
-        desired_heading_publisher_.publish(desired_direction_msg);
-        desired_velocity_publisher_.publish(desired_velocity_msg);
         r.sleep();
     } 
 }
