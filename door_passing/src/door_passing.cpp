@@ -1,4 +1,5 @@
 #include <door_passing/door_passing.h>
+#include <ros/ros.h>
 
 DoorPassing::DoorPassing():state_(-1)
 {
@@ -54,9 +55,9 @@ double DoorPassing::getTurnRange()
 
 bool DoorPassing::isStateChanged(double monitored_distance, double monitored_heading, Gateways detected_gateways)
 {
-    if (state_ == -1 && monitored_distance > 0 && monitored_distance < turn_range_)
+    if (state_ == -1 && fabs(monitored_heading - intial_orientation_) < 0.05)
     {
-        state_ == 0;
+        state_ = 0;
         return true;
     }
     else if (state_ == 0 && monitored_distance > turn_range_)
@@ -71,12 +72,12 @@ bool DoorPassing::isStateChanged(double monitored_distance, double monitored_hea
     }
     else if (state_ == 2 && monitored_distance > distance_to_door_)
     {
-        state_ == 3;
+        state_ = 3;
         return true;
     }
     else if (state_ == 3 && monitored_distance > distance_after_passing_)
     {
-        state_ == 4;
+        state_ = 4;
         return true;
     }
     else      

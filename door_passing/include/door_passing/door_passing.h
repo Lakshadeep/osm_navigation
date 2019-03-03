@@ -33,7 +33,7 @@ private:
     double turn_range_;
     double distance_to_door_;
     double distance_after_passing_;
-    double state_;
+    int state_;
 };
 
 #endif
