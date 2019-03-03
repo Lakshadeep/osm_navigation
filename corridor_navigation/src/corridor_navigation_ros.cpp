@@ -18,6 +18,10 @@ CorridorNavigationROS::CorridorNavigationROS(ros::NodeHandle& nh): nh_(nh), corr
     heading_control_switch_service_client_ = nh_.serviceClient<heading_control::Switch>(heading_control_switch_service_);
     heading_monitor_reset_service_client_ = nh_.serviceClient<robot_heading_monitor::Reset>(reset_heading_monitor_service_);
     distance_monitor_reset_service_client_ = nh_.serviceClient<robot_distance_monitor::Reset>(reset_distance_monitor_service_);
+
+    motion_control_switch_service_client_ = nh_.serviceClient<motion_control::Switch>(motion_control_switch_service_);
+    motion_control_params_service_client_ = nh_.serviceClient<motion_control::Params>(motion_control_params_service_);
+    motion_control_drive_mode_service_client_ = nh_.serviceClient<motion_control::DriveMode>(motion_control_drive_mode_service_);
 }
 
 CorridorNavigationROS::~CorridorNavigationROS()
@@ -40,6 +44,9 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_
     std_msgs::Float32 desired_velocity_msg;
 
     enableHeadingController();
+    enableMotionController();
+    setMotionControllerParams(0.7);
+    setMotionControllerDriveMode(0);
 
     while(nh_.ok())
     {
@@ -47,6 +54,7 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_
         {
             reset();
             disableHeadingController();
+            disableMotionController();
             //notify the ActionServer that we've successfully preempted
             ROS_DEBUG_NAMED("corridor_navigation", "Corridor navigation preempting the current goal");
             corridor_navigation_server_.setPreempted();
@@ -87,6 +95,7 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_
             {
                 reset();
                 disableHeadingController();
+                disableMotionController();
                 corridor_navigation_server_.setSucceeded(corridor_navigation_msgs::CorridorNavigationResult(), "Goal reached");
                 desired_velocity = 0;
                 return;
@@ -132,7 +141,7 @@ void CorridorNavigationROS::loadParameters()
     std::string heading_control_switch_service;
     nh_.param<std::string>("heading_control_switch_service", heading_control_switch_service, "/heading_control_switch");
     heading_control_switch_service_ = heading_control_switch_service ;
-    ROS_DEBUG("heading_control_switch_service service: %s", heading_control_switch_service.c_str());
+    ROS_DEBUG("heading_control_switch_service: %s", heading_control_switch_service.c_str());
 
     std::string desired_heading_topic;
     nh_.param<std::string>("desired_heading_topic", desired_heading_topic, "/desired_heading");
@@ -143,6 +152,21 @@ void CorridorNavigationROS::loadParameters()
     nh_.param<std::string>("desired_velocity_topic", desired_velocity_topic, "/desired_velocity");
     desired_velocity_topic_ = desired_velocity_topic;
     ROS_DEBUG("desired_velocity_topic: %s", desired_velocity_topic_.c_str());
+
+    std::string motion_control_switch_service;
+    nh_.param<std::string>("motion_control_switch_service", motion_control_switch_service, "/motion_control_switch");
+    motion_control_switch_service_ = motion_control_switch_service ;
+    ROS_DEBUG("motion_control_switch_service: %s", motion_control_switch_service.c_str());
+
+    std::string motion_control_params_service;
+    nh_.param<std::string>("motion_control_params_service", motion_control_params_service, "/motion_control_params");
+    motion_control_params_service_ = motion_control_params_service ;
+    ROS_DEBUG("motion_control_params_service: %s", motion_control_params_service.c_str());
+
+    std::string motion_control_drive_mode_service;
+    nh_.param<std::string>("motion_control_drive_mode_service", motion_control_drive_mode_service, "/motion_control_drive_mode");
+    motion_control_drive_mode_service_ = motion_control_drive_mode_service ;
+    ROS_DEBUG("motion_control_drive_mode_service: %s", motion_control_drive_mode_service.c_str());
 
     // corridor navigation params
     double recovery_direction_threshold;
@@ -259,6 +283,62 @@ void CorridorNavigationROS::disableHeadingController()
     else
     {
         ROS_ERROR("Failed to disable heading controller");
+    }
+}
+
+void CorridorNavigationROS::enableMotionController()
+{
+    motion_control::Switch motion_control_switch_service_msg;
+    motion_control_switch_service_msg.request.enable = true;
+    if (motion_control_switch_service_client_.call(motion_control_switch_service_msg))
+    {
+        ROS_DEBUG("Motion controller successfully enabled");
+    }
+    else
+    {
+        ROS_ERROR("Failed to enable motion controller");
+    }
+}
+
+void CorridorNavigationROS::disableMotionController()
+{
+    motion_control::Switch motion_control_switch_service_msg;
+    motion_control_switch_service_msg.request.enable = false;
+    if (motion_control_switch_service_client_.call(motion_control_switch_service_msg))
+    {
+        ROS_DEBUG("Motion controller successfully disabled");
+    }
+    else
+    {
+        ROS_ERROR("Failed to disable motion controller");
+    }
+}
+
+void CorridorNavigationROS::setMotionControllerParams(double inflation_radius)
+{
+    motion_control::Params motion_control_params_service_msg;
+    motion_control_params_service_msg.request.inflation_radius = inflation_radius;
+    if (motion_control_params_service_client_.call(motion_control_params_service_msg))
+    {
+        ROS_DEBUG("Motion controller params successfully updated");
+    }
+    else
+    {
+        ROS_ERROR("Failed to update motion controller params");
+    }
+}
+
+void CorridorNavigationROS::setMotionControllerDriveMode(int drive_mode)
+{
+    motion_control::DriveMode motion_control_drive_mode_service_msg;
+    motion_control_drive_mode_service_msg.request.drive_mode = drive_mode;
+    if (motion_control_drive_mode_service_client_.call(motion_control_drive_mode_service_msg))
+    {
+        ROS_DEBUG("Motion controller drive mode successfully updated");
+    }
+    else
+    {
+        ROS_ERROR("Failed to update motion controller drive mode");
     }
 }
 
