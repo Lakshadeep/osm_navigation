@@ -32,11 +32,20 @@ struct XJunction
     double front_range;
 };
 
+struct Door
+{
+    double turn_angle;
+    double turn_range;
+};
+
 struct Gateways
 {
     Hallway hallway;
     TJunction t_junction;
     XJunction x_junction;
+    Door left_door;
+    Door right_door;
+    Door front_door;
 };
 
 #endif

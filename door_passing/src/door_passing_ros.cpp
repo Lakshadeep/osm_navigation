@@ -37,9 +37,6 @@ void DoorPassingROS::run()
 void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConstPtr& goal)
 {
     reset();
-
-    // TODO - set goal
-
     ros::Rate r(controller_frequency_);
 
     std_msgs::Float32 desired_direction_msg;
@@ -47,8 +44,8 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
 
     enableHeadingController();
     enableMotionController();
-    setMotionControllerParams(0.7);
-    setMotionControllerDriveMode(0);
+    setMotionControllerParams(0.1);
+    setMotionControllerDriveMode(2);
 
     while(nh_.ok())
     {
@@ -58,18 +55,63 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
             disableHeadingController();
             disableMotionController();
             //notify the ActionServer that we've successfully preempted
-            ROS_DEBUG_NAMED("door_passing", "Junction navigation preempting the current goal");
+            ROS_DEBUG_NAMED("door_passing", "Preempting the current goal");
             door_passing_server_.setPreempted();
 
             return;
         }
         else
         {
-            // TODO
+            if(door_passing_.getState() == -1)
+            {
+                if(door_passing_.computeInitialOrientation(goal->door, detected_gateways_))
+                    resetHeadingMonitor();
+
+                if(!door_passing_.isInitialOrientationCorrect(monitored_heading_))
+                {
+                    desired_direction_msg.data = door_passing_.getInitialOrientation();
+                    desired_velocity_msg.data = 0.1;
+                }
+                else
+                {
+                    disableHeadingController();
+                    disableMotionController();
+                    door_passing_server_.setSucceeded(door_passing::DoorPassingResult(), "Goal reached");
+                    return;
+                }
+
+            }
+
+
+            // if(door_passing_.setGoal(goal->door, detected_gateways_))
+            // {
+
+            //     door_passing::DoorPassingFeedback feedback;
+            //     feedback.distance_to_turn = door_passing_.getTurnRange();
+            //     feedback.desired_turn_angle = door_passing_.getTurnAngle();
+
+            //     double desired_direction, desired_velocity;
+
+            //     if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
+            //     {
+            //         if(door_passing_.getState() == 0)
+            //         {
+            //             resetDistanceMonitor();
+            //             resetHeadingMonitor();
+            //         }
+            //     }
+            // else
+            // {
+            //     ROS_DEBUG_NAMED("door_passing", "Aborting the current goal");
+            //     door_passing_server_.setAborted();
+            //     return;
+            // }  
         }
 
+        desired_heading_publisher_.publish(desired_direction_msg);
+        desired_velocity_publisher_.publish(desired_velocity_msg);
         r.sleep();
-    }
+    } 
 }
 
 void DoorPassingROS::loadParameters()
@@ -160,6 +202,15 @@ void DoorPassingROS::gatewayDetectionCallback(const gateway_msgs::Gateways::Cons
     detected_gateways_.x_junction.right_turn_range = msg->x_junction.right_turn_range;
     detected_gateways_.x_junction.front_angle = msg->x_junction.front_angle;
     detected_gateways_.x_junction.front_range = msg->x_junction.front_range;
+
+    detected_gateways_.left_door.turn_angle = msg->left_door.angle; 
+    detected_gateways_.left_door.turn_range = msg->left_door.range; 
+
+    detected_gateways_.right_door.turn_angle = msg->right_door.angle; 
+    detected_gateways_.right_door.turn_range = msg->right_door.range;
+
+    detected_gateways_.front_door.turn_angle = msg->front_door.angle; 
+    detected_gateways_.front_door.turn_range = msg->front_door.range; 
 }
 
 void DoorPassingROS::distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg)

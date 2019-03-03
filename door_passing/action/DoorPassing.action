@@ -1,17 +1,10 @@
-# 0 : T-junction
-# 1 : X-junction
+# 0 : left
+# 1 : front
+# 2 : right
 
-int32 junction_type
-
-# 0 : T-junction
-# 1 : X-junction
-# 2 : Hallway
-
-int32 goal_type
+int32 door
 ---
 ---
 float32 distance_to_turn
-float32 distance_travelled
 float32 desired_turn_angle
-float32 turn_angle
 bool recovery_mode
