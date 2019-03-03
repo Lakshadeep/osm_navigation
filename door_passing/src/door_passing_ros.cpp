@@ -42,6 +42,8 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
     std_msgs::Float32 desired_direction_msg;
     std_msgs::Float32 desired_velocity_msg;
 
+    door_passing::DoorPassingFeedback feedback;
+
     enableHeadingController();
     enableMotionController();
     setMotionControllerParams(0.1);
@@ -72,7 +74,7 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
 
                 if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
-                    if(door_passing_.setGoal(goal->door, detected_gateways_))
+                    if(door_passing_.setGoal(goal->door, goal->distance_inside, detected_gateways_))
                     {
                         setMotionControllerDriveMode(1);
                         resetHeadingMonitor();
@@ -87,7 +89,6 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
                         return;
                     }
                 }
-
             }
             else if (door_passing_.getState() == 0)
             {
@@ -98,42 +99,74 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
 
                 if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
+                    setMotionControllerDriveMode(2);
+                }
+            }
+            else if (door_passing_.getState() == 1)
+            {
+                
+                desired_direction_msg.data = door_passing_.getTurnAngle();
+                desired_velocity_msg.data = 0.1;
+
+                if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
+                {
+                    if (door_passing_.computeFrontDoorParams(detected_gateways_))
+                    {
+                        setMotionControllerDriveMode(1);
+                        resetHeadingMonitor();
+                        resetDistanceMonitor();
+                    }
+                    else
+                    {
+                        disableHeadingController();
+                        disableMotionController();
+                        ROS_DEBUG_NAMED("door_passing", "Aborting the current goal");
+                        door_passing_server_.setAborted();
+                        return;
+                    }
+                }
+            }
+            else if (door_passing_.getState() == 2)
+            {   
+                if (door_passing_.computeFrontDoorParams(detected_gateways_))
+                {
+                    resetHeadingMonitor();
+                    resetDistanceMonitor();
+                }
+
+                desired_direction_msg.data = door_passing_.getFrontDoorOrientation();
+                desired_velocity_msg.data = 0.1;
+
+                if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
+                {
+                    resetHeadingMonitor();
+                    resetDistanceMonitor();
+                    setMotionControllerDriveMode(1);
+                }
+            }
+            else if (door_passing_.getState() == 3)
+            {
+                desired_direction_msg.data = 0;
+                desired_velocity_msg.data = 0.1;
+
+                if (door_passing_.computeFrontDoorParams(detected_gateways_))
+                {
+                    resetHeadingMonitor();
+                    resetDistanceMonitor();
+                }
+
+                if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
+                {
+                    setMotionControllerDriveMode(0);
                     disableHeadingController();
                     disableMotionController();
                     door_passing_server_.setSucceeded(door_passing::DoorPassingResult(), "Goal reached");
                     return;
                 }
             }
-
-
-            // if(door_passing_.setGoal(goal->door, detected_gateways_))
-            // {
-
-            //     door_passing::DoorPassingFeedback feedback;
-            //     feedback.distance_to_turn = door_passing_.getTurnRange();
-            //     feedback.desired_turn_angle = door_passing_.getTurnAngle();
-
-            //     double desired_direction, desired_velocity;
-
-            //     if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
-            //     {
-            //         if(door_passing_.getState() == 0)
-            //         {
-            //             resetDistanceMonitor();
-            //             resetHeadingMonitor();
-            //         }
-            //     }
-            // else
-            // {
-            //     ROS_DEBUG_NAMED("door_passing", "Aborting the current goal");
-            //     door_passing_server_.setAborted();
-            //     return;
-            // }  
-
             desired_heading_publisher_.publish(desired_direction_msg);
             desired_velocity_publisher_.publish(desired_velocity_msg);
         }
-
         r.sleep();
     } 
 }

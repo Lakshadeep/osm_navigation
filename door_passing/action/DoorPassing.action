@@ -3,8 +3,9 @@
 # 2 : right
 
 int32 door
+float32 distance_inside
 ---
 ---
 float32 distance_to_turn
 float32 desired_turn_angle
-bool recovery_mode
+int32 state
