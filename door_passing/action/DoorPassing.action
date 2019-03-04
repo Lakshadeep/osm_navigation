@@ -1,0 +1,9 @@
+# 0 : left
+# 1 : front
+# 2 : right
+
+int32 door
+float32 distance_inside
+---
+---
+int32 state
