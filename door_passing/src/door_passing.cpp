@@ -15,18 +15,18 @@ bool DoorPassing::setGoal(int goal, double distance_inside,  Gateways detected_g
     distance_inside_ = distance_inside;
     if( goal == 0)
     {
-        turn_range_ = detected_gateways.left_door.turn_range;
-        turn_angle_ = detected_gateways.left_door.turn_angle;
+        turn_range_ = detected_gateways.left_door.range_x;
+        turn_angle_ = detected_gateways.left_door.angle;
     }
     else if (goal == 1)
     {
-        turn_range_ = detected_gateways.front_door.turn_range;
-        turn_angle_ = detected_gateways.front_door.turn_angle;
+        turn_range_ = detected_gateways.front_door.range_x;
+        turn_angle_ = detected_gateways.front_door.angle;
     }
     else if (goal == 2)
     {
-        turn_range_ = detected_gateways.right_door.turn_range;
-        turn_angle_ = detected_gateways.right_door.turn_angle;
+        turn_range_ = detected_gateways.right_door.range_x;
+        turn_angle_ = detected_gateways.right_door.angle;
     }
     else
     { 
@@ -107,19 +107,19 @@ bool DoorPassing::isInitialOrientationCorrect(double monitored_heading)
 
 bool DoorPassing::computeInitialOrientation(int goal, Gateways detected_gateways)
 {
-    if( goal == 0 && detected_gateways.left_door.turn_range > 0)
+    if( goal == 0 && detected_gateways.left_door.range_x > 0)
     {
-        intial_orientation_ = detected_gateways.left_door.turn_angle - (M_PI/2);
+        intial_orientation_ = detected_gateways.left_door.angle - (M_PI/2);
         return true;
     }
-    else if (goal == 1 && detected_gateways.front_door.turn_range > 0)
+    else if (goal == 1 && detected_gateways.front_door.range_x > 0)
     {
-        intial_orientation_ = detected_gateways.front_door.turn_angle;
+        intial_orientation_ = detected_gateways.front_door.angle;
         return true;
     }
-    else if( goal == 2 && detected_gateways.right_door.turn_range > 0)
+    else if( goal == 2 && detected_gateways.right_door.range_x > 0)
     {
-        intial_orientation_ = detected_gateways.right_door.turn_angle + (M_PI/2);
+        intial_orientation_ = detected_gateways.right_door.angle + (M_PI/2);
         return true;
     }
 
@@ -133,10 +133,10 @@ double DoorPassing::getInitialOrientation()
 
 bool DoorPassing::computeFrontDoorParams(Gateways detected_gateways)
 {
-    if(detected_gateways.front_door.turn_range > 0)
+    if(detected_gateways.front_door.range_x > 0)
     {
-        front_door_distance_ = detected_gateways.front_door.turn_range;
-        front_door_orientation_ = detected_gateways.front_door.turn_angle;
+        front_door_distance_ = detected_gateways.front_door.range_x;
+        front_door_orientation_ = detected_gateways.front_door.angle;
         return true;
     }
     return false;

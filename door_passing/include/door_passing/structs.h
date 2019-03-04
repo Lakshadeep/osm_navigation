@@ -34,8 +34,9 @@ struct XJunction
 
 struct Door
 {
-    double turn_angle;
-    double turn_range;
+    double angle;
+    double range_x;
+    double range_y;
 };
 
 struct Gateways

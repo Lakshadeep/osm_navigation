@@ -260,14 +260,17 @@ void DoorPassingROS::gatewayDetectionCallback(const gateway_msgs::Gateways::Cons
     detected_gateways_.x_junction.front_angle = msg->x_junction.front_angle;
     detected_gateways_.x_junction.front_range = msg->x_junction.front_range;
 
-    detected_gateways_.left_door.turn_angle = msg->left_door.angle; 
-    detected_gateways_.left_door.turn_range = msg->left_door.range; 
+    detected_gateways_.left_door.angle = msg->left_door.angle; 
+    detected_gateways_.left_door.range_x = msg->left_door.range_x; 
+    detected_gateways_.left_door.range_y = msg->left_door.range_y; 
 
-    detected_gateways_.right_door.turn_angle = msg->right_door.angle; 
-    detected_gateways_.right_door.turn_range = msg->right_door.range;
+    detected_gateways_.right_door.angle = msg->right_door.angle; 
+    detected_gateways_.right_door.range_x = msg->right_door.range_x;
+    detected_gateways_.right_door.range_y = msg->right_door.range_y;
 
-    detected_gateways_.front_door.turn_angle = msg->front_door.angle; 
-    detected_gateways_.front_door.turn_range = msg->front_door.range; 
+    detected_gateways_.front_door.angle = msg->front_door.angle; 
+    detected_gateways_.front_door.range_x = msg->front_door.range_x; 
+    detected_gateways_.front_door.range_y = msg->front_door.range_y; 
 }
 
 void DoorPassingROS::distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg)
