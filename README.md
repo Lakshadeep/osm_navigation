@@ -90,19 +90,6 @@ Inside test folder, execute
 `roslaunch semantic_loclaization_test_HBRS_C022.xml`
 (NOTE: `semantic_localization_test_C022.bag` file which is not the part of this repository should be copied in `data` folder inside `test` folder)
 
-## Nav2D operator
-Reactive navigation. Builds and uses local cost map to move in a user specified direction or direction with least risk of collision
-
-#### Subscribed topics
-* cmd
-* laser scan
-
-#### Published topics
-* cmd_vel (for ropod)
-
-#### Launch
-`roslaunch nav2d_operator nav2d_operator.launch`
-
 
 ## Corridor navigation
 Performs heading based navigation w.r.t a certain reference feature
@@ -113,10 +100,12 @@ Performs heading based navigation w.r.t a certain reference feature
 * heading monitor
 
 #### Published topics
-* desired heading 
+* desired heading
+* desired velocity 
 
 #### Required services
 * heading control switch
+* motion control switch
 * heading monitor reset
 * distance monitor reset
 
@@ -132,3 +121,36 @@ direction: 0.0
 distance: 12.0
 goal_type: 0
 ```
+
+## Door passing
+Performs pure topological door entering without any robot localization estimate
+
+#### Subscribed topics
+* gateways
+* distance monitor
+* heading monitor
+
+#### Published topics
+* desired heading
+* desirred velocity 
+
+#### Required services
+* heading control switch
+* motion control switch
+* heading monitor reset
+* distance monitor reset
+* motion control params
+* motion control drive mode
+
+#### Launch
+`roslaunch door_passing door_passing.launch`
+
+#### Tests
+```
+rosrun actionlib axclient.py  "/door_passing_server" door_passing/DoorPassingAction
+
+door: 0/1/2    (left/front/right)
+distance_inside: 0.0
+```
+
+

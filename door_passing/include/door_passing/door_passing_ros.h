@@ -27,6 +27,7 @@ public:
     // Constructor / destructor
     DoorPassingROS(ros::NodeHandle&);
     ~DoorPassingROS();
+    
     void loadParameters();
 
     void run();
@@ -57,6 +58,9 @@ private:
     void headingMonitorCallback(const std_msgs::Float32::ConstPtr& msg);
     void desiredHeadingCallback(const std_msgs::Float32::ConstPtr& msg);
 
+    // action server callbacks
+    void doorPassingExecute(const door_passing::DoorPassingGoalConstPtr& goal);
+
     // ROS service, topic names
     std::string gateway_detection_topic_;
     std::string distance_monitor_topic_;
@@ -71,23 +75,6 @@ private:
     std::string motion_control_params_service_;
     std::string motion_control_drive_mode_service_;
 
-    int controller_frequency_;
-
-    // junction navigation
-    DoorPassing door_passing_;
-
-    // data caching
-    
-    // 1. detected features 
-    Gateways detected_gateways_;
-
-    // 2. monitors
-    double monitored_distance_;
-    double monitored_heading_;
-
-    // action server callbacks
-    void doorPassingExecute(const door_passing::DoorPassingGoalConstPtr& goal);
-
     // ROS related helper functions
     void resetMonitors();
     void resetHeadingMonitor();
@@ -99,6 +86,25 @@ private:
     void disableMotionController();
     void setMotionControllerParams(double inflation_radius);
     void setMotionControllerDriveMode(int drive_mode);
+
+    // door passing params
+    int controller_frequency_;
+    double velocity_;
+    double laser_robot_center_offset_x_;
+
+    // door passing
+    DoorPassing door_passing_;
+
+    // data caching
+    
+    // 1. detected features 
+    Gateways detected_gateways_;
+
+    // 2. monitors
+    double monitored_distance_;
+    double monitored_heading_;
+
+    
 };
 
 #endif

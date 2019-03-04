@@ -1,8 +1,9 @@
 #include <door_passing/door_passing.h>
 #include <ros/ros.h>
 
-DoorPassing::DoorPassing():state_(-1)
+DoorPassing::DoorPassing():laser_robot_center_offset_x_(0.3)
 {
+    reset();
 }
 
 DoorPassing::~DoorPassing()
@@ -35,26 +36,21 @@ bool DoorPassing::setGoal(int goal, double distance_inside,  Gateways detected_g
     return true;
 }
 
-void DoorPassing::setTurnAngle(double turn_angle)
+void DoorPassing::setParams(double laser_robot_center_offset_x)
 {
-    turn_angle_ = turn_angle;
+    laser_robot_center_offset_x_ = laser_robot_center_offset_x;
 }
     
-void DoorPassing::setTurnRange(double turn_range)
+double DoorPassing::getInitialOrientation()
 {
-    turn_range_ = turn_range;
+    return intial_orientation_;
 }
-    
+
 double DoorPassing::getTurnAngle()
 {
     return turn_angle_;
 }
     
-double DoorPassing::getTurnRange()
-{
-    return turn_range_;
-}
-
 double DoorPassing::getPassingOrientation()
 {
     return passing_orientation_;
@@ -70,7 +66,11 @@ bool DoorPassing::isStateChanged(double monitored_distance, double monitored_hea
     if (state_ == -1 && fabs(monitored_heading - intial_orientation_) < 0.02)
     {
         if (goal_ == 1)
+        {
             state_ = 2;
+            computePassingOrientation(detected_gateways);
+            computeDistanceToDoor(detected_gateways);
+        }
         else
             state_ = 0;
         return true;
@@ -83,13 +83,13 @@ bool DoorPassing::isStateChanged(double monitored_distance, double monitored_hea
     else if (state_ == 1 && fabs(monitored_heading - turn_angle_) < 0.02)
     {
         state_ = 2;
-        return true;
-    }
-    else if (state_ == 2 && (monitored_distance - 0.3) > distance_to_door_)
-    {
-        state_ = 3;
         computePassingOrientation(detected_gateways);
         computeDistanceToDoor(detected_gateways);
+        return true;
+    }
+    else if (state_ == 2 && (monitored_distance > distance_to_door_))
+    {
+        state_ = 3;
         return true;
     }
     else if (state_ == 3 && (monitored_distance > distance_inside_))
@@ -103,15 +103,6 @@ bool DoorPassing::isStateChanged(double monitored_distance, double monitored_hea
 int DoorPassing::getState()
 {
     return state_;
-}
-
-bool DoorPassing::isInitialOrientationCorrect(double monitored_heading)
-{
-    double diff = fabs(monitored_heading - intial_orientation_);
-    if( diff < 0.05)
-        return true;
-    else
-        return false;
 }
 
 bool DoorPassing::computeInitialOrientation(int goal, Gateways detected_gateways)
@@ -135,16 +126,11 @@ bool DoorPassing::computeInitialOrientation(int goal, Gateways detected_gateways
     return false;
 }
 
-double DoorPassing::getInitialOrientation()
-{
-    return intial_orientation_;
-}
-
 bool DoorPassing::computePassingOrientation(Gateways detected_gateways)
 {
     if( detected_gateways.front_door.range_x > 0)
     {
-        distance_to_door_ = pow(pow(detected_gateways.front_door.range_x, 2) + pow(detected_gateways.front_door.range_y, 2), 0.5);
+        passing_orientation_ = atan2(detected_gateways.front_door.range_y, detected_gateways.front_door.range_x);
         return true;
     }
 

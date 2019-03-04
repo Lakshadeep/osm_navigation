@@ -31,7 +31,7 @@ DoorPassingROS::~DoorPassingROS()
 void DoorPassingROS::run()
 {
     door_passing_server_.start();
-    ROS_INFO("Junction navigation action server started");
+    ROS_INFO("Door passing action server started");
 }
 
 void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConstPtr& goal)
@@ -39,52 +39,76 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
     reset();
     ros::Rate r(controller_frequency_);
 
+    // messages for publishing desired direction & velocity to controller
     std_msgs::Float32 desired_direction_msg;
     std_msgs::Float32 desired_velocity_msg;
 
+    // action server feedback message
     door_passing::DoorPassingFeedback feedback;
 
+    // enable heading & motion controller
     enableHeadingController();
     enableMotionController();
+
+    // set inflation radius to very low value as we are operating only in rotaion and heading control mode (no obstacle avoidance)
     setMotionControllerParams(0.1);
+    // we start in rotation drive mode
     setMotionControllerDriveMode(2);
 
+    // set goal received to action server
+    // this goal is then updated when robot is infronr of the door
     door_passing_.setGoal(goal->door, goal->distance_inside, detected_gateways_);
 
     while(nh_.ok())
     {
+        // if goal is cancelled by the client
         if(door_passing_server_.isPreemptRequested())
         {
             reset();
+
+            // disable bothe heading & motion controllers
             disableHeadingController();
             disableMotionController();
-            //notify the ActionServer that we've successfully preempted
+            
+            // notify the ActionServer that we've successfully preempted
             ROS_DEBUG_NAMED("door_passing", "Preempting the current goal");
             door_passing_server_.setPreempted();
-            door_passing_.reset();
-
             return;
         }
         else
         {
+            /**
+            Door passing state machine
+            --------------------------
+            State -1: orient perpendicular to the door direction
+            State 0: now move formward apporximately infront of the door
+            State 1: now orient facing towards the door
+            State 2: start moving in the direction of door until robot almost reach the door
+            State 3: enter the door and travel desired distance inside the room/area
+            **/
+
             if(door_passing_.getState() == -1)
             {
+                // if initial orientation is updated reset the heading monitor
                 if(door_passing_.computeInitialOrientation(goal->door, detected_gateways_))
                     resetHeadingMonitor();
 
                 desired_direction_msg.data = door_passing_.getInitialOrientation();
-                desired_velocity_msg.data = 0.1;
+                desired_velocity_msg.data = velocity_;
 
+                // check if state is changed & update the goal
                 if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
                     if(door_passing_.setGoal(goal->door, goal->distance_inside, detected_gateways_))
                     {
+                        // change from rotation to heading control drive mode
                         setMotionControllerDriveMode(1);
                         resetHeadingMonitor();
                         resetDistanceMonitor();
                     }
                     else
                     {
+                        // we abort the action if door is no longer detected!
                         disableHeadingController();
                         disableMotionController();
                         door_passing_.reset();
@@ -98,10 +122,11 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
             {
                 
                 desired_direction_msg.data = 0;
-                desired_velocity_msg.data = 0.1;
+                desired_velocity_msg.data = velocity_;
 
                 if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
+                    // we switch the drive mode to rotation once robot reach infront of door
                     setMotionControllerDriveMode(2);
                     resetHeadingMonitor();
                     resetDistanceMonitor();
@@ -111,10 +136,11 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
             {
                 
                 desired_direction_msg.data = door_passing_.getTurnAngle();
-                desired_velocity_msg.data = 0.1;
+                desired_velocity_msg.data = velocity_;
 
                 if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
+                    // we switch the drive mode to heading control once robot is facing towards the door
                     setMotionControllerDriveMode(1);
                     resetHeadingMonitor();
                     resetDistanceMonitor();
@@ -122,18 +148,21 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
             }
             else if (door_passing_.getState() == 2)
             {   
+                // keep updating robot orientation w.r.t the door
                 if (door_passing_.computePassingOrientation(detected_gateways_))
                 {
                     resetHeadingMonitor();
                 }
 
                 desired_direction_msg.data = door_passing_.getPassingOrientation();
-                desired_velocity_msg.data = 0.1;
+                desired_velocity_msg.data = velocity_;
 
                 if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
                     resetHeadingMonitor();
                     resetDistanceMonitor();
+
+                    // we stay in heading control drive mode to enter the door
                     setMotionControllerDriveMode(1);
                 }
             }
@@ -141,18 +170,23 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
             {
                 if (door_passing_.computeInsideOrientation(detected_gateways_))
                 {
+                    // we only reset heading monitor (and not distance monitor!!)
                     resetHeadingMonitor();
                 }
 
                 desired_direction_msg.data = door_passing_.getInsideOrientation();
-                desired_velocity_msg.data = 0.1;
+                desired_velocity_msg.data = velocity_;
 
                 if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
+                    // mission successful, now set drive mode to default i.e 0 (obstacle avoidance)
                     setMotionControllerDriveMode(0);
+                    
                     disableHeadingController();
                     disableMotionController();
-                    door_passing_.reset();
+                    
+                    reset();
+
                     door_passing_server_.setSucceeded(door_passing::DoorPassingResult(), "Goal reached");
                     return;
                 }
@@ -228,11 +262,20 @@ void DoorPassingROS::loadParameters()
     ROS_DEBUG("motion_control_drive_mode_service: %s", motion_control_drive_mode_service.c_str());
 
     // door passing params
-
     int controller_frequency;
     nh_.param<int>("controller_frequency", controller_frequency, 10);
     controller_frequency_ = controller_frequency;
     ROS_DEBUG("controller_frequency: %d", controller_frequency);
+
+    double velocity;
+    nh_.param<double>("velocity", velocity, 0.1);
+    velocity_ = velocity;
+    ROS_DEBUG("velocity: %f", velocity_);
+
+    double laser_robot_center_offset_x;
+    nh_.param<double>("laser_robot_center_offset_x", laser_robot_center_offset_x, 0.3);
+    door_passing_.setParams(laser_robot_center_offset_x);
+    ROS_DEBUG("laser_robot_center_offset_x: %f", laser_robot_center_offset_x);
 }
 
 void DoorPassingROS::gatewayDetectionCallback(const gateway_msgs::Gateways::ConstPtr& msg)
@@ -320,13 +363,9 @@ void DoorPassingROS::enableHeadingController()
     heading_control::Switch heading_control_switch_service_msg;
     heading_control_switch_service_msg.request.enable = true;
     if (heading_control_switch_service_client_.call(heading_control_switch_service_msg))
-    {
         ROS_DEBUG("Heading controller successfully enabled");
-    }
     else
-    {
         ROS_ERROR("Failed to enable heading controller");
-    }
 }
 
 void DoorPassingROS::disableHeadingController()
@@ -334,13 +373,9 @@ void DoorPassingROS::disableHeadingController()
     heading_control::Switch heading_control_switch_service_msg;
     heading_control_switch_service_msg.request.enable = false;
     if (heading_control_switch_service_client_.call(heading_control_switch_service_msg))
-    {
         ROS_DEBUG("Heading controller successfully disabled");
-    }
     else
-    {
         ROS_ERROR("Failed to disable heading controller");
-    }
 }
 
 void DoorPassingROS::enableMotionController()
@@ -348,13 +383,9 @@ void DoorPassingROS::enableMotionController()
     motion_control::Switch motion_control_switch_service_msg;
     motion_control_switch_service_msg.request.enable = true;
     if (motion_control_switch_service_client_.call(motion_control_switch_service_msg))
-    {
         ROS_DEBUG("Motion controller successfully enabled");
-    }
     else
-    {
         ROS_ERROR("Failed to enable motion controller");
-    }
 }
 
 void DoorPassingROS::disableMotionController()
@@ -362,13 +393,9 @@ void DoorPassingROS::disableMotionController()
     motion_control::Switch motion_control_switch_service_msg;
     motion_control_switch_service_msg.request.enable = false;
     if (motion_control_switch_service_client_.call(motion_control_switch_service_msg))
-    {
         ROS_DEBUG("Motion controller successfully disabled");
-    }
     else
-    {
         ROS_ERROR("Failed to disable motion controller");
-    }
 }
 
 void DoorPassingROS::setMotionControllerParams(double inflation_radius)
@@ -376,13 +403,9 @@ void DoorPassingROS::setMotionControllerParams(double inflation_radius)
     motion_control::Params motion_control_params_service_msg;
     motion_control_params_service_msg.request.inflation_radius = inflation_radius;
     if (motion_control_params_service_client_.call(motion_control_params_service_msg))
-    {
         ROS_DEBUG("Motion controller params successfully updated");
-    }
     else
-    {
         ROS_ERROR("Failed to update motion controller params");
-    }
 }
 
 void DoorPassingROS::setMotionControllerDriveMode(int drive_mode)
@@ -390,17 +413,13 @@ void DoorPassingROS::setMotionControllerDriveMode(int drive_mode)
     motion_control::DriveMode motion_control_drive_mode_service_msg;
     motion_control_drive_mode_service_msg.request.drive_mode = drive_mode;
     if (motion_control_drive_mode_service_client_.call(motion_control_drive_mode_service_msg))
-    {
         ROS_DEBUG("Motion controller drive mode successfully updated");
-    }
     else
-    {
         ROS_ERROR("Failed to update motion controller drive mode");
-    }
 }
 
 void DoorPassingROS::reset()
 {
-    // TODO: reset door passing here
+    door_passing_.reset();
     resetMonitors();
 }
