@@ -49,6 +49,8 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
     setMotionControllerParams(0.1);
     setMotionControllerDriveMode(2);
 
+    door_passing_.setGoal(goal->door, goal->distance_inside, detected_gateways_);
+
     while(nh_.ok())
     {
         if(door_passing_server_.isPreemptRequested())
@@ -59,6 +61,7 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
             //notify the ActionServer that we've successfully preempted
             ROS_DEBUG_NAMED("door_passing", "Preempting the current goal");
             door_passing_server_.setPreempted();
+            door_passing_.reset();
 
             return;
         }
@@ -84,6 +87,7 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
                     {
                         disableHeadingController();
                         disableMotionController();
+                        door_passing_.reset();
                         ROS_DEBUG_NAMED("door_passing", "Aborting the current goal");
                         door_passing_server_.setAborted();
                         return;
@@ -96,10 +100,11 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
                 desired_direction_msg.data = 0;
                 desired_velocity_msg.data = 0.1;
 
-
                 if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
                     setMotionControllerDriveMode(2);
+                    resetHeadingMonitor();
+                    resetDistanceMonitor();
                 }
             }
             else if (door_passing_.getState() == 1)
@@ -110,31 +115,19 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
 
                 if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
-                    if (door_passing_.computeFrontDoorParams(detected_gateways_))
-                    {
-                        setMotionControllerDriveMode(1);
-                        resetHeadingMonitor();
-                        resetDistanceMonitor();
-                    }
-                    else
-                    {
-                        disableHeadingController();
-                        disableMotionController();
-                        ROS_DEBUG_NAMED("door_passing", "Aborting the current goal");
-                        door_passing_server_.setAborted();
-                        return;
-                    }
+                    setMotionControllerDriveMode(1);
+                    resetHeadingMonitor();
+                    resetDistanceMonitor();
                 }
             }
             else if (door_passing_.getState() == 2)
             {   
-                if (door_passing_.computeFrontDoorParams(detected_gateways_))
+                if (door_passing_.computePassingOrientation(detected_gateways_))
                 {
                     resetHeadingMonitor();
-                    resetDistanceMonitor();
                 }
 
-                desired_direction_msg.data = door_passing_.getFrontDoorOrientation();
+                desired_direction_msg.data = door_passing_.getPassingOrientation();
                 desired_velocity_msg.data = 0.1;
 
                 if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
@@ -146,20 +139,20 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
             }
             else if (door_passing_.getState() == 3)
             {
-                desired_direction_msg.data = 0;
-                desired_velocity_msg.data = 0.1;
-
-                if (door_passing_.computeFrontDoorParams(detected_gateways_))
+                if (door_passing_.computeInsideOrientation(detected_gateways_))
                 {
                     resetHeadingMonitor();
-                    resetDistanceMonitor();
                 }
+
+                desired_direction_msg.data = door_passing_.getInsideOrientation();
+                desired_velocity_msg.data = 0.1;
 
                 if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
                     setMotionControllerDriveMode(0);
                     disableHeadingController();
                     disableMotionController();
+                    door_passing_.reset();
                     door_passing_server_.setSucceeded(door_passing::DoorPassingResult(), "Goal reached");
                     return;
                 }
@@ -167,6 +160,9 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
             desired_heading_publisher_.publish(desired_direction_msg);
             desired_velocity_publisher_.publish(desired_velocity_msg);
         }
+
+        feedback.state = door_passing_.getState();
+        door_passing_server_.publishFeedback(feedback);  
         r.sleep();
     } 
 }

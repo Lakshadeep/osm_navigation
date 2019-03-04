@@ -11,19 +11,19 @@ DoorPassing::~DoorPassing()
 
 bool DoorPassing::setGoal(int goal, double distance_inside,  Gateways detected_gateways)
 {
-    
+    goal_ = goal;
     distance_inside_ = distance_inside;
-    if( goal == 0)
+    if( goal_ == 0)
     {
         turn_range_ = detected_gateways.left_door.range_x;
         turn_angle_ = detected_gateways.left_door.angle;
     }
-    else if (goal == 1)
+    else if (goal_ == 1)
     {
         turn_range_ = detected_gateways.front_door.range_x;
         turn_angle_ = detected_gateways.front_door.angle;
     }
-    else if (goal == 2)
+    else if (goal_ == 2)
     {
         turn_range_ = detected_gateways.right_door.range_x;
         turn_angle_ = detected_gateways.right_door.angle;
@@ -55,16 +55,24 @@ double DoorPassing::getTurnRange()
     return turn_range_;
 }
 
-double DoorPassing::getFrontDoorOrientation()
+double DoorPassing::getPassingOrientation()
 {
-    return front_door_orientation_;
+    return passing_orientation_;
+}
+
+double DoorPassing::getInsideOrientation()
+{
+    return orientation_inside_;
 }
 
 bool DoorPassing::isStateChanged(double monitored_distance, double monitored_heading, Gateways detected_gateways)
 {
     if (state_ == -1 && fabs(monitored_heading - intial_orientation_) < 0.02)
     {
-        state_ = 0;
+        if (goal_ == 1)
+            state_ = 2;
+        else
+            state_ = 0;
         return true;
     }
     else if (state_ == 0 && (monitored_distance) > turn_range_)
@@ -77,18 +85,19 @@ bool DoorPassing::isStateChanged(double monitored_distance, double monitored_hea
         state_ = 2;
         return true;
     }
-    else if (state_ == 2 && monitored_distance - 0.3 > distance_to_door_ )  //&& fabs(monitored_heading - front_door_orientation_) < 0.05
+    else if (state_ == 2 && (monitored_distance - 0.3) > distance_to_door_)
     {
         state_ = 3;
+        computePassingOrientation(detected_gateways);
+        computeDistanceToDoor(detected_gateways);
         return true;
     }
-    else if (state_ == 3 && monitored_distance > distance_inside_)
+    else if (state_ == 3 && (monitored_distance > distance_inside_))
     {
         state_ = 4;
         return true;
     }
-    else      
-        return false;
+    return false;
 }
 
 int DoorPassing::getState()
@@ -131,14 +140,62 @@ double DoorPassing::getInitialOrientation()
     return intial_orientation_;
 }
 
-bool DoorPassing::computeFrontDoorParams(Gateways detected_gateways)
+bool DoorPassing::computePassingOrientation(Gateways detected_gateways)
 {
-    if(detected_gateways.front_door.range_x > 0)
+    if( detected_gateways.front_door.range_x > 0)
     {
-        front_door_distance_ = detected_gateways.front_door.range_x;
-        front_door_orientation_ = detected_gateways.front_door.angle;
+        distance_to_door_ = pow(pow(detected_gateways.front_door.range_x, 2) + pow(detected_gateways.front_door.range_y, 2), 0.5);
+        return true;
+    }
+
+    return false;
+}
+
+bool DoorPassing::computeDistanceToDoor(Gateways detected_gateways)
+{
+    if( detected_gateways.front_door.range_x > 0)
+    {
+        distance_to_door_ = pow(pow(detected_gateways.front_door.range_x, 2) + pow(detected_gateways.front_door.range_y, 2), 0.5);
+        return true;
+    }
+
+    return false;
+}
+
+bool DoorPassing::computeInsideOrientation(Gateways detected_gateways)
+{
+    if( detected_gateways.hallway.left_range > 0 && detected_gateways.hallway.right_range > 0)
+    {
+        orientation_inside_ = (detected_gateways.hallway.left_angle + detected_gateways.hallway.right_angle)/2.0;
+        return true;
+    }
+    else if (detected_gateways.hallway.left_range > 0)
+    {
+        orientation_inside_ = detected_gateways.hallway.left_angle;
+        return true;
+    }
+    else if (detected_gateways.hallway.right_range > 0)
+    {
+        orientation_inside_ = detected_gateways.hallway.right_angle;
         return true;
     }
     return false;
+}
+
+void DoorPassing::reset()
+{
+    goal_ = -1;
+    state_ = -1;
+
+    intial_orientation_ = 0;
+
+    turn_range_ = 0;
+    turn_angle_ = 0;
+    
+    distance_to_door_ = 0;
+    passing_orientation_ = 0;
+
+    distance_inside_ = 0;
+    orientation_inside_ = 0;
 }
 

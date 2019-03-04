@@ -18,7 +18,8 @@ public:
     
     double getTurnAngle();
     double getTurnRange();
-    double getFrontDoorOrientation();
+    double getPassingOrientation();
+    double getInsideOrientation();
 
     bool isStateChanged(double monitored_distance, double monitored_heading, Gateways detected_gateways);
 
@@ -28,17 +29,27 @@ public:
     bool isInitialOrientationCorrect(double monitored_heading);
     double getInitialOrientation();
 
-    bool computeFrontDoorParams(Gateways detected_gateways);
+    bool computePassingOrientation(Gateways detected_gateways);
+    bool computeDistanceToDoor(Gateways detected_gateways);
+
+    bool computeInsideOrientation(Gateways detected_gateways);
+
+    void reset();
     
 private:
-    double intial_orientation_;
-    double turn_angle_;
-    double turn_range_;
-    double distance_to_door_;
-    double distance_inside_;
-    double front_door_distance_;
-    double front_door_orientation_;
+    int goal_;
     int state_;
+
+    double intial_orientation_;
+
+    double turn_range_;
+    double turn_angle_;
+    
+    double distance_to_door_;
+    double passing_orientation_;
+
+    double distance_inside_;
+    double orientation_inside_;
 };
 
 #endif
