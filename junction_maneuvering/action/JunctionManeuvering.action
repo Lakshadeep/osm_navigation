@@ -1,8 +1,15 @@
+# junction
+# 0 - T Junction
+# 1 - X - junction
+int32 junction
+
 # 0 : left
 # 1 : front
 # 2 : right
 
-int32 junction
+float32 turn_direction
+
+# distance to travel after turning at junction
 float32 distance
 ---
 ---

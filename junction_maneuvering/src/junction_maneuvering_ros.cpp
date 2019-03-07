@@ -50,14 +50,14 @@ void JunctionManeuveringROS::junctionManeuveringExecute(const junction_maneuveri
     enableHeadingController();
     enableMotionController();
 
-    // set inflation radius to very low value as we are operating only in rotaion and heading control mode (no obstacle avoidance)
+    // set inflation radius to very low value as we are operating only in rotation and heading control mode (no obstacle avoidance)
     setMotionControllerParams(0.1);
     // we start in rotation drive mode
     setMotionControllerDriveMode(2);
 
     // set goal received to action server
     // this goal is then updated when robot is infronr of the door
-    junction_maneuvering_.setGoal(goal->junction, goal->distance, detected_gateways_);
+    junction_maneuvering_.setGoal(goal->junction, goal->turn_direction, goal->distance, detected_gateways_);
 
     while(nh_.ok())
     {
@@ -66,7 +66,7 @@ void JunctionManeuveringROS::junctionManeuveringExecute(const junction_maneuveri
         {
             reset();
 
-            // disable bothe heading & motion controllers
+            // disable both heading & motion controllers
             disableHeadingController();
             disableMotionController();
             
@@ -78,49 +78,15 @@ void JunctionManeuveringROS::junctionManeuveringExecute(const junction_maneuveri
         else
         {
             /**
-            Door passing state machine
+            Junction maneuvering state machine
             --------------------------
-            State -1: orient perpendicular to the door direction
-            State 0: now move formward apporximately infront of the door
-            State 1: now orient facing towards the door
-            State 2: start moving in the direction of door until robot almost reach the door
-            State 3: enter the door and travel desired distance inside the room/area
+            State -1: move forward approximately at the center of junction
+            State 0: now turn aligning with the junction wall
+            State 1: align with detected corridor & move desired distance
             **/
 
             if(junction_maneuvering_.getState() == -1)
             {
-                // if initial orientation is updated reset the heading monitor
-                if(junction_maneuvering_.computeInitialOrientation(goal->junction, detected_gateways_))
-                    resetHeadingMonitor();
-
-                desired_direction_msg.data = junction_maneuvering_.getInitialOrientation();
-                desired_velocity_msg.data = velocity_;
-
-                // check if state is changed & update the goal
-                if(junction_maneuvering_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
-                {
-                    if(junction_maneuvering_.setGoal(goal->junction, goal->distance, detected_gateways_))
-                    {
-                        // change from rotation to heading control drive mode
-                        setMotionControllerDriveMode(1);
-                        resetHeadingMonitor();
-                        resetDistanceMonitor();
-                    }
-                    else
-                    {
-                        // we abort the action if door is no longer detected!
-                        disableHeadingController();
-                        disableMotionController();
-                        junction_maneuvering_.reset();
-                        ROS_DEBUG_NAMED("junction_maneuvering", "Aborting the current goal");
-                        junction_maneuvering_server_.setAborted();
-                        return;
-                    }
-                }
-            }
-            else if (junction_maneuvering_.getState() == 0)
-            {
-                
                 desired_direction_msg.data = 0;
                 desired_velocity_msg.data = velocity_;
 
@@ -132,7 +98,7 @@ void JunctionManeuveringROS::junctionManeuveringExecute(const junction_maneuveri
                     resetDistanceMonitor();
                 }
             }
-            else if (junction_maneuvering_.getState() == 1)
+            else if (junction_maneuvering_.getState() == 0)
             {
                 
                 desired_direction_msg.data = junction_maneuvering_.getTurnAngle();
@@ -146,35 +112,15 @@ void JunctionManeuveringROS::junctionManeuveringExecute(const junction_maneuveri
                     resetDistanceMonitor();
                 }
             }
-            else if (junction_maneuvering_.getState() == 2)
-            {   
-                // keep updating robot orientation w.r.t the door
+            else if (junction_maneuvering_.getState() == 1)
+            {
+                // keep updating robot orientation w.r.t the corridor
                 if (junction_maneuvering_.computePassingOrientation(detected_gateways_))
                 {
                     resetHeadingMonitor();
                 }
 
                 desired_direction_msg.data = junction_maneuvering_.getPassingOrientation();
-                desired_velocity_msg.data = velocity_;
-
-                if(junction_maneuvering_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
-                {
-                    resetHeadingMonitor();
-                    resetDistanceMonitor();
-
-                    // we stay in heading control drive mode to enter the door
-                    setMotionControllerDriveMode(1);
-                }
-            }
-            else if (junction_maneuvering_.getState() == 3)
-            {
-                if (junction_maneuvering_.computeInsideOrientation(detected_gateways_))
-                {
-                    // we only reset heading monitor (and not distance monitor!!)
-                    resetHeadingMonitor();
-                }
-
-                desired_direction_msg.data = junction_maneuvering_.getInsideOrientation();
                 desired_velocity_msg.data = velocity_;
 
                 if(junction_maneuvering_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
@@ -191,6 +137,7 @@ void JunctionManeuveringROS::junctionManeuveringExecute(const junction_maneuveri
                     return;
                 }
             }
+            
             desired_heading_publisher_.publish(desired_direction_msg);
             desired_velocity_publisher_.publish(desired_velocity_msg);
         }
@@ -271,11 +218,6 @@ void JunctionManeuveringROS::loadParameters()
     nh_.param<double>("velocity", velocity, 0.1);
     velocity_ = velocity;
     ROS_DEBUG("velocity: %f", velocity_);
-
-    double laser_robot_center_offset_x;
-    nh_.param<double>("laser_robot_center_offset_x", laser_robot_center_offset_x, 0.3);
-    junction_maneuvering_.setParams(laser_robot_center_offset_x);
-    ROS_DEBUG("laser_robot_center_offset_x: %f", laser_robot_center_offset_x);
 }
 
 void JunctionManeuveringROS::gatewayDetectionCallback(const gateway_msgs::Gateways::ConstPtr& msg)
