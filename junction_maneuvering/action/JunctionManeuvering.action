@@ -1,0 +1,9 @@
+# 0 : left
+# 1 : front
+# 2 : right
+
+int32 junction
+float32 distance
+---
+---
+int32 state
