@@ -18,29 +18,30 @@ bool JunctionManeuvering::setGoal(int goal, int turn_direction, double distance,
 
     if( goal_ == 0 && turn_direction == 0)
     {
-        turn_range_ = (0.8 * detected_gateways.t_junction.left_turn_range) - 0.75;
+        turn_range_ = (0.9 * detected_gateways.t_junction.left_turn_range) - 0.75;
         turn_angle_ = detected_gateways.t_junction.left_turn_angle;
     }
     else if (goal_ == 0 && turn_direction == 2)
     {
-        turn_range_ = (0.8 * detected_gateways.t_junction.right_turn_range) - 0.5;
+        turn_range_ = (0.9 * detected_gateways.t_junction.right_turn_range) - 0.5;
         turn_angle_ = detected_gateways.t_junction.right_turn_angle;
     }
     else if (goal_ == 1 && turn_direction == 0)
     {
-        turn_range_ = (0.8 * detected_gateways.x_junction.left_turn_range)  - 0.75;
+        turn_range_ = (0.9 * detected_gateways.x_junction.left_turn_range)  - 0.75;
         turn_angle_ = detected_gateways.x_junction.left_turn_angle;
     }
     else if (goal_ == 1 && turn_direction == 2)
     {
-        turn_range_ = (0.8 * detected_gateways.x_junction.right_turn_range) - 0.5;
+        turn_range_ = (0.9 * detected_gateways.x_junction.right_turn_range) - 0.5;
         turn_angle_ = detected_gateways.x_junction.right_turn_angle;
     }
     else if (goal_ == 1 && turn_direction == 1)
     {
         turn_range_x_ = detected_gateways.x_junction.front_range_x;
         turn_range_y_ = detected_gateways.x_junction.front_range_y;
-        turn_angle_ = detected_gateways.x_junction.front_angle;
+        turn_range_ = pow(pow(turn_range_x_,2) + pow(turn_range_y_,2),0.5);
+        turn_angle_ = 0;
     }
     else
     { 
@@ -96,10 +97,8 @@ bool JunctionManeuvering::computeInitialOrientation(Gateways detected_gateways)
         initial_orientation_ = atan2(detected_gateways.x_junction.front_range_y, detected_gateways.x_junction.front_range_x);
         return true;
     }
-
     return false;
 }
-
 
 bool JunctionManeuvering::computePassingOrientation(Gateways detected_gateways)
 {
@@ -118,7 +117,6 @@ bool JunctionManeuvering::computePassingOrientation(Gateways detected_gateways)
         passing_orientation_ = detected_gateways.hallway.right_angle;
         return true;
     }
-
     return false;
 }
 
@@ -136,6 +134,5 @@ void JunctionManeuvering::reset()
     passing_orientation_ = 0;
 
     distance_ = 0;
-
 }
 
