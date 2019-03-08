@@ -153,4 +153,37 @@ door: 0/1/2    (left/front/right)
 distance_inside: 0.0
 ```
 
+## Junction maneuvering
+Performs right, left or straight turn at the junction (X/T junctions)
+
+#### Subscribed topics
+* gateways
+* distance monitor
+* heading monitor
+
+#### Published topics
+* desired heading
+* desirred velocity 
+
+#### Required services
+* heading control switch
+* motion control switch
+* heading monitor reset
+* distance monitor reset
+* motion control params
+* motion control drive mode
+
+#### Launch
+`roslaunch junction_maneuvering junction_maneuvering.launch`
+
+#### Tests
+```
+rosrun actionlib axclient.py  "/junction_maneuvering_server" junction_maneuvering/JunctionManeuveringAction
+
+junction: 0/1    (t/x-junction)
+turn_direction: 0/1/2    (left/front/right)
+distance: 0.0
+```
+
+
 

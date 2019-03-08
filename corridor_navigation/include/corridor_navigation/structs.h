@@ -29,7 +29,8 @@ struct XJunction
     double right_turn_angle;
     double right_turn_range;
     double front_angle;
-    double front_range;
+    double front_range_x;
+    double front_range_y;
 };
 
 struct Gateways
@@ -38,7 +39,5 @@ struct Gateways
     TJunction t_junction;
     XJunction x_junction;
 };
-
-// NOTE: currently doors are not considered as there is no distinction between doors on the left and right side
 
 #endif

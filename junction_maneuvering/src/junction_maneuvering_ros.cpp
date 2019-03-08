@@ -1,14 +1,14 @@
-#include "door_passing/door_passing_ros.h"
+#include "junction_maneuvering/junction_maneuvering_ros.h"
 
-DoorPassingROS::DoorPassingROS(ros::NodeHandle& nh): nh_(nh), door_passing_server_(nh,"/door_passing_server",
-  boost::bind(&DoorPassingROS::doorPassingExecute, this, _1),false), monitored_heading_(0), monitored_distance_(0)
+JunctionManeuveringROS::JunctionManeuveringROS(ros::NodeHandle& nh): nh_(nh), junction_maneuvering_server_(nh,"/junction_maneuvering_server",
+  boost::bind(&JunctionManeuveringROS::junctionManeuveringExecute, this, _1),false), monitored_heading_(0), monitored_distance_(0)
 {
     loadParameters(); 
     
     // subscribers
-    gateway_detection_subscriber_ = nh_.subscribe(gateway_detection_topic_, 1, &DoorPassingROS::gatewayDetectionCallback, this);
-    distance_monitor_subscriber_ = nh_.subscribe(distance_monitor_topic_, 1, &DoorPassingROS::distanceMonitorCallback, this);
-    heading_monitor_subscriber_ = nh_.subscribe(heading_monitor_topic_, 1, &DoorPassingROS::headingMonitorCallback, this);
+    gateway_detection_subscriber_ = nh_.subscribe(gateway_detection_topic_, 1, &JunctionManeuveringROS::gatewayDetectionCallback, this);
+    distance_monitor_subscriber_ = nh_.subscribe(distance_monitor_topic_, 1, &JunctionManeuveringROS::distanceMonitorCallback, this);
+    heading_monitor_subscriber_ = nh_.subscribe(heading_monitor_topic_, 1, &JunctionManeuveringROS::headingMonitorCallback, this);
 
     // publishers
     desired_heading_publisher_ = nh_.advertise<std_msgs::Float32>(desired_heading_topic_, 1);
@@ -24,17 +24,17 @@ DoorPassingROS::DoorPassingROS(ros::NodeHandle& nh): nh_(nh), door_passing_serve
     motion_control_drive_mode_service_client_ = nh_.serviceClient<motion_control::DriveMode>(motion_control_drive_mode_service_);
 }
 
-DoorPassingROS::~DoorPassingROS()
+JunctionManeuveringROS::~JunctionManeuveringROS()
 {
 }
 
-void DoorPassingROS::run()
+void JunctionManeuveringROS::run()
 {
-    door_passing_server_.start();
-    ROS_INFO("Door passing action server started");
+    junction_maneuvering_server_.start();
+    ROS_INFO("Junction maneuvering action server started");
 }
 
-void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConstPtr& goal)
+void JunctionManeuveringROS::junctionManeuveringExecute(const junction_maneuvering::JunctionManeuveringGoalConstPtr& goal)
 {
     reset();
     ros::Rate r(controller_frequency_);
@@ -44,87 +44,58 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
     std_msgs::Float32 desired_velocity_msg;
 
     // action server feedback message
-    door_passing::DoorPassingFeedback feedback;
+    junction_maneuvering::JunctionManeuveringFeedback feedback;
 
     // enable heading & motion controller
     enableHeadingController();
     enableMotionController();
 
-    // set inflation radius to very low value as we are operating only in rotaion and heading control mode (no obstacle avoidance)
+    // set inflation radius to very low value as we are operating only in rotation and heading control mode (no obstacle avoidance)
     setMotionControllerParams(0.1);
     // we start in rotation drive mode
-    setMotionControllerDriveMode(2);
+    setMotionControllerDriveMode(1);
 
     // set goal received to action server
     // this goal is then updated when robot is infronr of the door
-    door_passing_.setGoal(goal->door, goal->distance_inside, detected_gateways_);
+    junction_maneuvering_.setGoal(goal->junction, goal->turn_direction, goal->distance, detected_gateways_);
 
     while(nh_.ok())
     {
         // if goal is cancelled by the client
-        if(door_passing_server_.isPreemptRequested())
+        if(junction_maneuvering_server_.isPreemptRequested())
         {
             reset();
 
-            // disable bothe heading & motion controllers
+            // disable both heading & motion controllers
             disableHeadingController();
             disableMotionController();
             
             // notify the ActionServer that we've successfully preempted
-            ROS_DEBUG_NAMED("door_passing", "Preempting the current goal");
-            door_passing_server_.setPreempted();
+            ROS_DEBUG_NAMED("junction_maneuvering", "Preempting the current goal");
+            junction_maneuvering_server_.setPreempted();
             return;
         }
         else
         {
             /**
-            Door passing state machine
+            Junction maneuvering state machine
             --------------------------
-            State -1: orient perpendicular to the door direction
-            State 0: now move formward apporximately infront of the door
-            State 1: now orient facing towards the door
-            State 2: start moving in the direction of door until robot almost reach the door
-            State 3: enter the door and travel desired distance inside the room/area
+            State -1: move forward approximately at the center of junction
+            State 0: now turn aligning with the junction wall
+            State 1: align with detected corridor & move desired distance
             **/
 
-            if(door_passing_.getState() == -1)
+            if(junction_maneuvering_.getState() == -1)
             {
-                // if initial orientation is updated reset the heading monitor
-                if(door_passing_.computeInitialOrientation(goal->door, detected_gateways_))
-                    resetHeadingMonitor();
-
-                desired_direction_msg.data = door_passing_.getInitialOrientation();
-                desired_velocity_msg.data = velocity_;
-
-                // check if state is changed & update the goal
-                if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
+                if (junction_maneuvering_.computeInitialOrientation(detected_gateways_))
                 {
-                    if(door_passing_.setGoal(goal->door, goal->distance_inside, detected_gateways_))
-                    {
-                        // change from rotation to heading control drive mode
-                        setMotionControllerDriveMode(1);
-                        resetHeadingMonitor();
-                        resetDistanceMonitor();
-                    }
-                    else
-                    {
-                        // we abort the action if door is no longer detected!
-                        disableHeadingController();
-                        disableMotionController();
-                        door_passing_.reset();
-                        ROS_DEBUG_NAMED("door_passing", "Aborting the current goal");
-                        door_passing_server_.setAborted();
-                        return;
-                    }
+                    resetHeadingMonitor();
                 }
-            }
-            else if (door_passing_.getState() == 0)
-            {
-                
-                desired_direction_msg.data = 0;
+
+                desired_direction_msg.data = junction_maneuvering_.getInitialOrientation();
                 desired_velocity_msg.data = velocity_;
 
-                if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
+                if(junction_maneuvering_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
                     // we switch the drive mode to rotation once robot reach infront of door
                     setMotionControllerDriveMode(2);
@@ -132,13 +103,13 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
                     resetDistanceMonitor();
                 }
             }
-            else if (door_passing_.getState() == 1)
+            else if (junction_maneuvering_.getState() == 0)
             {
                 
-                desired_direction_msg.data = door_passing_.getTurnAngle();
+                desired_direction_msg.data = junction_maneuvering_.getTurnAngle();
                 desired_velocity_msg.data = velocity_;
 
-                if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
+                if(junction_maneuvering_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
                     // we switch the drive mode to heading control once robot is facing towards the door
                     setMotionControllerDriveMode(1);
@@ -146,38 +117,18 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
                     resetDistanceMonitor();
                 }
             }
-            else if (door_passing_.getState() == 2)
-            {   
-                // keep updating robot orientation w.r.t the door
-                if (door_passing_.computePassingOrientation(detected_gateways_))
-                {
-                    resetHeadingMonitor();
-                }
-
-                desired_direction_msg.data = door_passing_.getPassingOrientation();
-                desired_velocity_msg.data = velocity_;
-
-                if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
-                {
-                    resetHeadingMonitor();
-                    resetDistanceMonitor();
-
-                    // we stay in heading control drive mode to enter the door
-                    setMotionControllerDriveMode(1);
-                }
-            }
-            else if (door_passing_.getState() == 3)
+            else if (junction_maneuvering_.getState() == 1)
             {
-                if (door_passing_.computeInsideOrientation(detected_gateways_))
+                // keep updating robot orientation w.r.t the corridor
+                if (junction_maneuvering_.computePassingOrientation(detected_gateways_))
                 {
-                    // we only reset heading monitor (and not distance monitor!!)
                     resetHeadingMonitor();
                 }
 
-                desired_direction_msg.data = door_passing_.getInsideOrientation();
+                desired_direction_msg.data = junction_maneuvering_.getPassingOrientation();
                 desired_velocity_msg.data = velocity_;
 
-                if(door_passing_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
+                if(junction_maneuvering_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
                 {
                     // mission successful, now set drive mode to default i.e 0 (obstacle avoidance)
                     setMotionControllerDriveMode(0);
@@ -187,21 +138,22 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
                     
                     reset();
 
-                    door_passing_server_.setSucceeded(door_passing::DoorPassingResult(), "Goal reached");
+                    junction_maneuvering_server_.setSucceeded(junction_maneuvering::JunctionManeuveringResult(), "Goal reached");
                     return;
                 }
             }
+            
             desired_heading_publisher_.publish(desired_direction_msg);
             desired_velocity_publisher_.publish(desired_velocity_msg);
         }
 
-        feedback.state = door_passing_.getState();
-        door_passing_server_.publishFeedback(feedback);  
+        feedback.state = junction_maneuvering_.getState();
+        junction_maneuvering_server_.publishFeedback(feedback);  
         r.sleep();
     } 
 }
 
-void DoorPassingROS::loadParameters()
+void JunctionManeuveringROS::loadParameters()
 {
     // detection
     std::string gateway_detection_topic;
@@ -271,14 +223,9 @@ void DoorPassingROS::loadParameters()
     nh_.param<double>("velocity", velocity, 0.1);
     velocity_ = velocity;
     ROS_DEBUG("velocity: %f", velocity_);
-
-    double laser_robot_center_offset_x;
-    nh_.param<double>("laser_robot_center_offset_x", laser_robot_center_offset_x, 0.3);
-    door_passing_.setParams(laser_robot_center_offset_x);
-    ROS_DEBUG("laser_robot_center_offset_x: %f", laser_robot_center_offset_x);
 }
 
-void DoorPassingROS::gatewayDetectionCallback(const gateway_msgs::Gateways::ConstPtr& msg)
+void JunctionManeuveringROS::gatewayDetectionCallback(const gateway_msgs::Gateways::ConstPtr& msg)
 {
     detected_gateways_.hallway.left_angle = msg->hallway.left_angle;
     detected_gateways_.hallway.right_angle = msg->hallway.right_angle;
@@ -313,23 +260,23 @@ void DoorPassingROS::gatewayDetectionCallback(const gateway_msgs::Gateways::Cons
     detected_gateways_.front_door.range_y = msg->front_door.range_y; 
 }
 
-void DoorPassingROS::distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg)
+void JunctionManeuveringROS::distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg)
 {
     monitored_distance_ = msg->data;
 }
 
-void DoorPassingROS::headingMonitorCallback(const std_msgs::Float32::ConstPtr& msg)
+void JunctionManeuveringROS::headingMonitorCallback(const std_msgs::Float32::ConstPtr& msg)
 {
     monitored_heading_ = msg->data;
 }
 
-void DoorPassingROS::resetMonitors()
+void JunctionManeuveringROS::resetMonitors()
 {
     resetHeadingMonitor();
     resetDistanceMonitor();
 }
 
-void DoorPassingROS::resetHeadingMonitor()
+void JunctionManeuveringROS::resetHeadingMonitor()
 {
     robot_heading_monitor::Reset heading_reset_srv;
     heading_reset_srv.request.reset = true;
@@ -344,7 +291,7 @@ void DoorPassingROS::resetHeadingMonitor()
     }
 }
 
-void DoorPassingROS::resetDistanceMonitor()
+void JunctionManeuveringROS::resetDistanceMonitor()
 { 
     robot_distance_monitor::Reset distance_reset_srv;
     distance_reset_srv.request.reset = true;
@@ -359,7 +306,7 @@ void DoorPassingROS::resetDistanceMonitor()
     }
 }
 
-void DoorPassingROS::enableHeadingController()
+void JunctionManeuveringROS::enableHeadingController()
 {
     heading_control::Switch heading_control_switch_service_msg;
     heading_control_switch_service_msg.request.enable = true;
@@ -369,7 +316,7 @@ void DoorPassingROS::enableHeadingController()
         ROS_ERROR("Failed to enable heading controller");
 }
 
-void DoorPassingROS::disableHeadingController()
+void JunctionManeuveringROS::disableHeadingController()
 {
     heading_control::Switch heading_control_switch_service_msg;
     heading_control_switch_service_msg.request.enable = false;
@@ -379,7 +326,7 @@ void DoorPassingROS::disableHeadingController()
         ROS_ERROR("Failed to disable heading controller");
 }
 
-void DoorPassingROS::enableMotionController()
+void JunctionManeuveringROS::enableMotionController()
 {
     motion_control::Switch motion_control_switch_service_msg;
     motion_control_switch_service_msg.request.enable = true;
@@ -389,7 +336,7 @@ void DoorPassingROS::enableMotionController()
         ROS_ERROR("Failed to enable motion controller");
 }
 
-void DoorPassingROS::disableMotionController()
+void JunctionManeuveringROS::disableMotionController()
 {
     motion_control::Switch motion_control_switch_service_msg;
     motion_control_switch_service_msg.request.enable = false;
@@ -399,7 +346,7 @@ void DoorPassingROS::disableMotionController()
         ROS_ERROR("Failed to disable motion controller");
 }
 
-void DoorPassingROS::setMotionControllerParams(double inflation_radius)
+void JunctionManeuveringROS::setMotionControllerParams(double inflation_radius)
 {
     motion_control::Params motion_control_params_service_msg;
     motion_control_params_service_msg.request.inflation_radius = inflation_radius;
@@ -409,7 +356,7 @@ void DoorPassingROS::setMotionControllerParams(double inflation_radius)
         ROS_ERROR("Failed to update motion controller params");
 }
 
-void DoorPassingROS::setMotionControllerDriveMode(int drive_mode)
+void JunctionManeuveringROS::setMotionControllerDriveMode(int drive_mode)
 {
     motion_control::DriveMode motion_control_drive_mode_service_msg;
     motion_control_drive_mode_service_msg.request.drive_mode = drive_mode;
@@ -419,8 +366,8 @@ void DoorPassingROS::setMotionControllerDriveMode(int drive_mode)
         ROS_ERROR("Failed to update motion controller drive mode");
 }
 
-void DoorPassingROS::reset()
+void JunctionManeuveringROS::reset()
 {
-    door_passing_.reset();
+    junction_maneuvering_.reset();
     resetMonitors();
 }
