@@ -7,7 +7,7 @@ int32 junction
 # 1 : front
 # 2 : right
 
-float32 turn_direction
+int32 turn_direction
 
 # distance to travel after turning at junction
 float32 distance

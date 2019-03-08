@@ -10,34 +10,36 @@ JunctionManeuvering::~JunctionManeuvering()
 {
 }
 
-bool JunctionManeuvering::setGoal(int goal, double turn_direction, double distance, Gateways detected_gateways)
+bool JunctionManeuvering::setGoal(int goal, int turn_direction, double distance, Gateways detected_gateways)
 {
     goal_ = goal;
     distance_ = distance;
+    turn_direction_ = turn_direction;
 
     if( goal_ == 0 && turn_direction == 0)
     {
-        turn_range_ = detected_gateways.t_junction.left_turn_range * 0.8;
+        turn_range_ = (0.8 * detected_gateways.t_junction.left_turn_range) - 0.75;
         turn_angle_ = detected_gateways.t_junction.left_turn_angle;
     }
     else if (goal_ == 0 && turn_direction == 2)
     {
-        turn_range_ = detected_gateways.t_junction.right_turn_range * 0.6;
+        turn_range_ = (0.8 * detected_gateways.t_junction.right_turn_range) - 0.5;
         turn_angle_ = detected_gateways.t_junction.right_turn_angle;
     }
     else if (goal_ == 1 && turn_direction == 0)
     {
-        turn_range_ = detected_gateways.x_junction.left_turn_range * 0.8;
-        turn_angle_ = detected_gateways.x_junction.left_turn_angle * 0.8;
+        turn_range_ = (0.8 * detected_gateways.x_junction.left_turn_range)  - 0.75;
+        turn_angle_ = detected_gateways.x_junction.left_turn_angle;
     }
     else if (goal_ == 1 && turn_direction == 2)
     {
-        turn_range_ = detected_gateways.x_junction.right_turn_range * 0.6;
-        turn_angle_ = detected_gateways.x_junction.right_turn_angle * 0.6;
+        turn_range_ = (0.8 * detected_gateways.x_junction.right_turn_range) - 0.5;
+        turn_angle_ = detected_gateways.x_junction.right_turn_angle;
     }
     else if (goal_ == 1 && turn_direction == 1)
     {
-        turn_range_ = detected_gateways.x_junction.front_range;
+        turn_range_x_ = detected_gateways.x_junction.front_range_x;
+        turn_range_y_ = detected_gateways.x_junction.front_range_y;
         turn_angle_ = detected_gateways.x_junction.front_angle;
     }
     else
@@ -55,6 +57,11 @@ double JunctionManeuvering::getTurnAngle()
 double JunctionManeuvering::getPassingOrientation()
 {
     return passing_orientation_;
+}
+
+double JunctionManeuvering::getInitialOrientation()
+{
+    return initial_orientation_;
 }
 
 bool JunctionManeuvering::isStateChanged(double monitored_distance, double monitored_heading, Gateways detected_gateways)
@@ -80,6 +87,17 @@ bool JunctionManeuvering::isStateChanged(double monitored_distance, double monit
 int JunctionManeuvering::getState()
 {
     return state_;
+}
+
+bool JunctionManeuvering::computeInitialOrientation(Gateways detected_gateways)
+{
+    if (goal_ == 1 && turn_direction_ == 1)
+    {
+        initial_orientation_ = atan2(detected_gateways.x_junction.front_range_y, detected_gateways.x_junction.front_range_x);
+        return true;
+    }
+
+    return false;
 }
 
 
@@ -110,8 +128,11 @@ void JunctionManeuvering::reset()
     state_ = -1;
 
     turn_range_ = 0;
+    turn_range_x_ = 0;
+    turn_range_y_ = 0;
     turn_angle_ = 0;
     
+    initial_orientation_ = 0;
     passing_orientation_ = 0;
 
     distance_ = 0;

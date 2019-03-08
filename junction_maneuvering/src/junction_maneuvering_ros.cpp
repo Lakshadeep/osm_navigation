@@ -53,7 +53,7 @@ void JunctionManeuveringROS::junctionManeuveringExecute(const junction_maneuveri
     // set inflation radius to very low value as we are operating only in rotation and heading control mode (no obstacle avoidance)
     setMotionControllerParams(0.1);
     // we start in rotation drive mode
-    setMotionControllerDriveMode(2);
+    setMotionControllerDriveMode(1);
 
     // set goal received to action server
     // this goal is then updated when robot is infronr of the door
@@ -87,7 +87,12 @@ void JunctionManeuveringROS::junctionManeuveringExecute(const junction_maneuveri
 
             if(junction_maneuvering_.getState() == -1)
             {
-                desired_direction_msg.data = 0;
+                if (junction_maneuvering_.computeInitialOrientation(detected_gateways_))
+                {
+                    resetHeadingMonitor();
+                }
+
+                desired_direction_msg.data = junction_maneuvering_.getInitialOrientation();
                 desired_velocity_msg.data = velocity_;
 
                 if(junction_maneuvering_.isStateChanged(monitored_distance_, monitored_heading_, detected_gateways_))
@@ -239,7 +244,8 @@ void JunctionManeuveringROS::gatewayDetectionCallback(const gateway_msgs::Gatewa
     detected_gateways_.x_junction.right_turn_angle = msg->x_junction.right_turn_angle;
     detected_gateways_.x_junction.right_turn_range = msg->x_junction.right_turn_range;
     detected_gateways_.x_junction.front_angle = msg->x_junction.front_angle;
-    detected_gateways_.x_junction.front_range = msg->x_junction.front_range;
+    detected_gateways_.x_junction.front_range_x = msg->x_junction.front_range_x;
+    detected_gateways_.x_junction.front_range_y = msg->x_junction.front_range_y;
 
     detected_gateways_.left_door.angle = msg->left_door.angle; 
     detected_gateways_.left_door.range_x = msg->left_door.range_x; 

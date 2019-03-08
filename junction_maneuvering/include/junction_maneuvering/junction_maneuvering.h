@@ -13,12 +13,14 @@ public:
     ~JunctionManeuvering();
     
     // setter methods
-    bool setGoal(int goal, double turn_direction, double distance, Gateways detected_gateways);
+    bool setGoal(int goal, int turn_direction, double distance, Gateways detected_gateways);
     void setParams(double laser_robot_center_offset_x);
     
     // getter methods for getting orientation at different states in state machine
+    bool computeInitialOrientation(Gateways detected_gateways);
     double getTurnAngle();
     double getPassingOrientation();
+    double getInitialOrientation();
 
     // determine & get current state
     bool isStateChanged(double monitored_distance, double monitored_heading, Gateways detected_gateways);
@@ -40,10 +42,14 @@ private:
     // orientations
     double turn_angle_;
     double passing_orientation_;
+    double initial_orientation_;
     
     // distances
     double turn_range_;
+    double turn_range_x_, turn_range_y_;
+
     double distance_;
+    int turn_direction_;
 };
 
 #endif

@@ -297,7 +297,8 @@ void DoorPassingROS::gatewayDetectionCallback(const gateway_msgs::Gateways::Cons
     detected_gateways_.x_junction.right_turn_angle = msg->x_junction.right_turn_angle;
     detected_gateways_.x_junction.right_turn_range = msg->x_junction.right_turn_range;
     detected_gateways_.x_junction.front_angle = msg->x_junction.front_angle;
-    detected_gateways_.x_junction.front_range = msg->x_junction.front_range;
+    detected_gateways_.x_junction.front_range_x = msg->x_junction.front_range_x;
+    detected_gateways_.x_junction.front_range_y = msg->x_junction.front_range_y;
 
     detected_gateways_.left_door.angle = msg->left_door.angle; 
     detected_gateways_.left_door.range_x = msg->left_door.range_x; 
