@@ -10,7 +10,7 @@
 // ROS messages
 #include <gateway_msgs/Gateways.h>
 #include <std_msgs/Float32.h>
-#include <corridor_navigation_msgs/CorridorNavigationAction.h>
+#include <corridor_navigation/CorridorNavigationAction.h>
 
 // ROS services
 #include <heading_control/Switch.h>
@@ -49,7 +49,7 @@ private:
     ros::ServiceClient motion_control_params_service_client_;
     ros::ServiceClient motion_control_drive_mode_service_client_;
 
-    actionlib::SimpleActionServer<corridor_navigation_msgs::CorridorNavigationAction> corridor_navigation_server_;
+    actionlib::SimpleActionServer<corridor_navigation::CorridorNavigationAction> corridor_navigation_server_;
 
     // subscriber callbacks
     void gatewayDetectionCallback(const gateway_msgs::Gateways::ConstPtr& msg);
@@ -86,7 +86,7 @@ private:
     double monitored_heading_;
 
     // action server callbacks
-    void CorridorNavigationExecute(const corridor_navigation_msgs::CorridorNavigationGoalConstPtr& goal);
+    void CorridorNavigationExecute(const corridor_navigation::CorridorNavigationGoalConstPtr& goal);
 
     // ROS related helper functions
     void resetMonitors();

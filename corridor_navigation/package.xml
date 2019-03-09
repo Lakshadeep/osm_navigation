@@ -54,7 +54,6 @@
   <build_depend>std_msgs</build_depend>
   <build_depend>nav_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
-  <build_depend>corridor_navigation_msgs</build_depend>
   <build_depend>gateway_detection</build_depend>
   <build_depend>robot_distance_monitor</build_depend>
   <build_depend>robot_heading_monitor</build_depend>
@@ -63,12 +62,12 @@
   <build_depend>actionlib_msgs</build_depend>
   <build_depend>heading_control</build_depend>
   <build_depend>motion_control</build_depend>
+  <build_depend>message_generation</build_depend>
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>rospy</build_export_depend>
   <build_export_depend>std_msgs</build_export_depend>
   <build_export_depend>nav_msgs</build_export_depend>
   <build_export_depend>geometry_msgs</build_export_depend>
-  <build_export_depend>corridor_navigation_msgs</build_export_depend>
   <build_export_depend>gateway_detection</build_export_depend>
   <build_export_depend>robot_distance_monitor</build_export_depend>
   <build_export_depend>robot_heading_monitor</build_export_depend>
@@ -82,7 +81,6 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>corridor_navigation_msgs</exec_depend>
   <exec_depend>gateway_detection</exec_depend>
   <exec_depend>robot_distance_monitor</exec_depend>
   <exec_depend>robot_heading_monitor</exec_depend>
@@ -91,6 +89,7 @@
   <exec_depend>motion_control</exec_depend>
   <exec_depend>actionlib_msgs</exec_depend>
   <exec_depend>actionlib</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

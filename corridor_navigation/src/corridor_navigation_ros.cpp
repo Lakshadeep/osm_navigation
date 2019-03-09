@@ -34,7 +34,7 @@ void CorridorNavigationROS::run()
     ROS_INFO("Corridor navigation action server started");
 }
 
-void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_msgs::CorridorNavigationGoalConstPtr& goal)
+void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation::CorridorNavigationGoalConstPtr& goal)
 {
     reset();
     corridor_navigation_.setGoal(goal->goal_type, goal->direction, goal->distance);
@@ -63,7 +63,7 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_
         }
         else
         {
-            corridor_navigation_msgs::CorridorNavigationFeedback feedback;
+            corridor_navigation::CorridorNavigationFeedback feedback;
             feedback.distance_travelled = monitored_distance_;
             feedback.current_direction = monitored_heading_;
 
@@ -96,7 +96,7 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation_
                 reset();
                 disableHeadingController();
                 disableMotionController();
-                corridor_navigation_server_.setSucceeded(corridor_navigation_msgs::CorridorNavigationResult(), "Goal reached");
+                corridor_navigation_server_.setSucceeded(corridor_navigation::CorridorNavigationResult(), "Goal reached");
                 desired_velocity = 0;
                 return;
             }
