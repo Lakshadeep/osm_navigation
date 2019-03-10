@@ -1,6 +1,6 @@
 #include <corridor_navigation/corridor_navigation.h>
 
-CorridorNavigation::CorridorNavigation():desired_direction_(0), recovery_direction_threshold_(0.5), 
+CorridorNavigation::CorridorNavigation():desired_direction_(0), recovery_direction_threshold_(1.0), 
 correction_direction_threshold_(0.06), desired_distance_(0), goal_type_(-1)
 {
 }
@@ -24,11 +24,16 @@ void CorridorNavigation::setNominalVelocity(double nominal_velocity)
     nominal_velocity_ = nominal_velocity;
 }
 
+double CorridorNavigation::getDesiredDirection()
+{
+    return desired_direction_; 
+}
+
 bool CorridorNavigation::determineDirection(double &computed_direction, double curr_direction, double left_ref_direction, 
                                             double left_ref_range, double right_ref_direction, double right_ref_range)
 {
        
-    if (fabs(curr_direction) < recovery_direction_threshold_)
+    if (fabs(desired_direction_ - curr_direction) < recovery_direction_threshold_)
     { 
         // NOTE: both the ranges greater then 0 indicates both are valid ref angles 
         if(left_ref_range > 0  && right_ref_range > 0)

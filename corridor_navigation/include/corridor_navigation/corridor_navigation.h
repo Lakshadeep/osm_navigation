@@ -21,6 +21,7 @@ public:
     double computeVelocity(double monitored_distance, double monitored_heading);
     void setGoal(int goal, double direction, double distance);
     void reset();
+    double getDesiredDirection();
 
 private:
     // params

@@ -72,6 +72,7 @@ private:
     std::string motion_control_drive_mode_service_;
 
     int controller_frequency_;
+    bool recovery_enabled_;
 
     // corridor navigation
     CorridorNavigation corridor_navigation_;

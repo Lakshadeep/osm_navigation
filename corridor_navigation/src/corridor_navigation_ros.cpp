@@ -1,7 +1,8 @@
 #include "corridor_navigation/corridor_navigation_ros.h"
 
 CorridorNavigationROS::CorridorNavigationROS(ros::NodeHandle& nh): nh_(nh), corridor_navigation_server_(nh,"/corridor_navigation_server",
-  boost::bind(&CorridorNavigationROS::CorridorNavigationExecute, this, _1),false), monitored_heading_(0), monitored_distance_(0)
+  boost::bind(&CorridorNavigationROS::CorridorNavigationExecute, this, _1),false), monitored_heading_(0), monitored_distance_(0),
+  recovery_enabled_(false)
 {
     loadParameters(); 
     
@@ -42,6 +43,7 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation:
 
     std_msgs::Float32 desired_direction_msg;
     std_msgs::Float32 desired_velocity_msg;
+    corridor_navigation::CorridorNavigationFeedback feedback;
 
     enableHeadingController();
     enableMotionController();
@@ -63,26 +65,41 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation:
         }
         else
         {
-            corridor_navigation::CorridorNavigationFeedback feedback;
             feedback.distance_travelled = monitored_distance_;
             feedback.current_direction = monitored_heading_;
 
             double desired_direction, desired_velocity;
 
-            if (corridor_navigation_.determineDirection(desired_direction, monitored_heading_, detected_gateways_.hallway.left_angle, 
-            detected_gateways_.hallway.left_range, detected_gateways_.hallway.right_angle, detected_gateways_.hallway.right_range))
-            {   
-                desired_velocity = corridor_navigation_.computeVelocity(monitored_distance_, monitored_heading_);
-
-                if(corridor_navigation_.isCorrectDirection(detected_gateways_.hallway.left_angle, detected_gateways_.hallway.left_range, 
-                detected_gateways_.hallway.right_angle, detected_gateways_.hallway.right_range))
+            if (recovery_enabled_)
+            {
+                desired_direction = corridor_navigation_.getDesiredDirection();
+                if(fabs(desired_direction - monitored_heading_) < 0.05)
                 {
-                    ResetHeadingMonitor();
+                    recovery_enabled_ = false;
+                    feedback.recovery_mode = 0;
+                    setMotionControllerDriveMode(0);
                 }
             }
             else
             {
-                feedback.recovery_mode = 1;
+                if (corridor_navigation_.determineDirection(desired_direction, monitored_heading_, detected_gateways_.hallway.left_angle, 
+                detected_gateways_.hallway.left_range, detected_gateways_.hallway.right_angle, detected_gateways_.hallway.right_range))
+                {   
+                    desired_velocity = corridor_navigation_.computeVelocity(monitored_distance_, monitored_heading_);
+
+                    if(corridor_navigation_.isCorrectDirection(detected_gateways_.hallway.left_angle, detected_gateways_.hallway.left_range, 
+                    detected_gateways_.hallway.right_angle, detected_gateways_.hallway.right_range))
+                    {
+                        ResetHeadingMonitor();
+                        corridor_navigation_.setGoal(goal->goal_type, desired_direction, goal->distance);
+                    }
+                }
+                else
+                {
+                    feedback.recovery_mode = 1;
+                    recovery_enabled_ = true;
+                    setMotionControllerDriveMode(2);
+                }
             }
 
             desired_direction_msg.data = desired_direction;
@@ -170,7 +187,7 @@ void CorridorNavigationROS::loadParameters()
 
     // corridor navigation params
     double recovery_direction_threshold;
-    nh_.param<double>("recovery_direction_threshold", recovery_direction_threshold, 0.5);
+    nh_.param<double>("recovery_direction_threshold", recovery_direction_threshold, 1.0);
     corridor_navigation_.setRecoveryDirectionThreshold(recovery_direction_threshold);
     ROS_DEBUG("recovery_direction_threshold: %f", recovery_direction_threshold);
 
