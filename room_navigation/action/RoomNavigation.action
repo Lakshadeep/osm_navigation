@@ -1,0 +1,20 @@
+# 0 : door
+# 1 : t junction
+# 2 : x junction
+# 3 : corner
+# 4 : wall
+
+int32 goal_type
+
+# 0 : left
+# 1 : front
+# 2 : right
+
+int32 direction
+float32 distance
+---
+---
+float32 distance_travelled
+float32 current_direction
+float32 desired_direction
+bool recovery_mode
