@@ -58,6 +58,7 @@
   <build_depend>robot_distance_monitor</build_depend>
   <build_depend>robot_heading_monitor</build_depend>
   <build_depend>gateway_msgs</build_depend>
+  <build_depend>osm_map_msgs</build_depend>
   <build_depend>actionlib</build_depend>
   <build_depend>actionlib_msgs</build_depend>
   <build_depend>heading_control</build_depend>
@@ -68,6 +69,7 @@
   <build_export_depend>std_msgs</build_export_depend>
   <build_export_depend>nav_msgs</build_export_depend>
   <build_export_depend>geometry_msgs</build_export_depend>
+  <build_export_depend>osm_map_msgs</build_export_depend>
   <build_export_depend>gateway_detection</build_export_depend>
   <build_export_depend>robot_distance_monitor</build_export_depend>
   <build_export_depend>robot_heading_monitor</build_export_depend>
@@ -85,6 +87,7 @@
   <exec_depend>robot_distance_monitor</exec_depend>
   <exec_depend>robot_heading_monitor</exec_depend>
   <exec_depend>gateway_msgs</exec_depend>
+  <exec_depend>osm_map_msgs</exec_depend>
   <exec_depend>heading_control</exec_depend>
   <exec_depend>motion_control</exec_depend>
   <exec_depend>actionlib_msgs</exec_depend>

@@ -8,6 +8,8 @@ RoomNavigationROS::RoomNavigationROS(ros::NodeHandle& nh): nh_(nh), room_navigat
     
     // subscribers
     gateway_detection_subscriber_ = nh_.subscribe(gateway_detection_topic_, 1, &RoomNavigationROS::gatewayDetectionCallback, this);
+    semantic_feature_detection_subscriber_ = nh_.subscribe(semantic_feature_detection_topic_, 1, 
+                                             &RoomNavigationROS::semanticFeatureDetectionCallback, this);
     distance_monitor_subscriber_ = nh_.subscribe(distance_monitor_topic_, 1, &RoomNavigationROS::distanceMonitorCallback, this);
     heading_monitor_subscriber_ = nh_.subscribe(heading_monitor_topic_, 1, &RoomNavigationROS::headingMonitorCallback, this);
 
@@ -128,6 +130,11 @@ void RoomNavigationROS::RoomNavigationExecute(const room_navigation::RoomNavigat
 void RoomNavigationROS::loadParameters()
 {
     // detection
+    std::string semantic_feature_detection_topic;
+    nh_.param<std::string>("semantic_feature_detection_topic", semantic_feature_detection_topic, "/semantic_features_detected");
+    semantic_feature_detection_topic_ = semantic_feature_detection_topic;
+    ROS_DEBUG("semantic_feature_detection_topic: %s", semantic_feature_detection_topic_.c_str());
+
     std::string gateway_detection_topic;
     nh_.param<std::string>("gateway_detection_topic", gateway_detection_topic, "/gateways_detected");
     gateway_detection_topic_ = gateway_detection_topic;
@@ -228,6 +235,51 @@ void RoomNavigationROS::gatewayDetectionCallback(const gateway_msgs::Gateways::C
     detected_gateways_.x_junction.front_angle = msg->x_junction.front_angle;
     detected_gateways_.x_junction.front_range_x = msg->x_junction.front_range_x;
     detected_gateways_.x_junction.front_range_y = msg->x_junction.front_range_y;
+}
+
+void RoomNavigationROS::semanticFeatureDetectionCallback(const osm_map_msgs::SemanticMap::ConstPtr& msg)
+{
+    detected_semantic_features_.wall_sides.clear();
+    detected_semantic_features_.door_sides.clear();
+    detected_semantic_features_.pillars.clear();
+    detected_semantic_features_.features.clear();
+    
+    for (int i = 0; i < msg->wall_sides.size(); i++)
+    {
+        WallSide ws;
+        ws.radius = msg->wall_sides[i].radius;
+        ws.angle = msg->wall_sides[i].angle;
+        detected_semantic_features_.wall_sides.push_back(ws);
+    }
+
+    for (int i = 0; i < msg->door_sides.size(); i++)
+    {
+        DoorSide ds;
+        ds.radius = msg->door_sides[i].radius;
+        ds.angle = msg->door_sides[i].angle;
+        detected_semantic_features_.door_sides.push_back(ds);
+    }
+
+    for (int i = 0; i < msg->pillars.size(); i++)
+    {
+        Pillar p;
+        p.radius = msg->pillars[i].radius;
+        p.angle = msg->pillars[i].angle;
+        detected_semantic_features_.pillars.push_back(p);
+    }
+
+    for (int i = 0; i < msg->features.size(); i++)
+    {
+        Feature f;
+        f.type = msg->features[i].type;
+        f.height = msg->features[i].height;
+        f.breast = msg->features[i].breast;
+        f.width = msg->features[i].width;
+        f.position.x = msg->features[i].position.x;
+        f.position.y = msg->features[i].position.y;
+        detected_semantic_features_.features.push_back(f);
+    }
+
 }
 
 void RoomNavigationROS::distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg)

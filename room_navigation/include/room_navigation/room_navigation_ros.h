@@ -9,6 +9,7 @@
 
 // ROS messages
 #include <gateway_msgs/Gateways.h>
+#include <osm_map_msgs/SemanticMap.h>
 #include <std_msgs/Float32.h>
 #include <room_navigation/RoomNavigationAction.h>
 
@@ -35,6 +36,7 @@ private:
     // ROS
     ros::NodeHandle nh_;
     ros::Subscriber gateway_detection_subscriber_;
+    ros::Subscriber semantic_feature_detection_subscriber_;
     ros::Subscriber distance_monitor_subscriber_;
     ros::Subscriber heading_monitor_subscriber_;
 
@@ -53,12 +55,14 @@ private:
 
     // subscriber callbacks
     void gatewayDetectionCallback(const gateway_msgs::Gateways::ConstPtr& msg);
+    void semanticFeatureDetectionCallback(const osm_map_msgs::SemanticMap::ConstPtr& msg);
     void distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg);
     void headingMonitorCallback(const std_msgs::Float32::ConstPtr& msg);
     void desiredHeadingCallback(const std_msgs::Float32::ConstPtr& msg);
 
     // ROS service, topic names
     std::string gateway_detection_topic_;
+    std::string semantic_feature_detection_topic_;
     std::string distance_monitor_topic_;
     std::string heading_monitor_topic_;
     std::string desired_heading_topic_;
@@ -81,6 +85,7 @@ private:
     
     // 1. detected features 
     Gateways detected_gateways_;
+    SemanticFeatures detected_semantic_features_;
 
     // 2. monitors
     double monitored_distance_;

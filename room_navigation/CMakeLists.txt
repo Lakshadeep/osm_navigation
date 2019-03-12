@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   robot_distance_monitor
   robot_heading_monitor
   gateway_msgs
+  osm_map_msgs
   heading_control
   actionlib_msgs
   actionlib
@@ -38,6 +39,7 @@ generate_messages(
   geometry_msgs
   nav_msgs
   gateway_msgs
+  osm_map_msgs
   heading_control
   actionlib_msgs
 )

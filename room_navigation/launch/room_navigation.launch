@@ -1,6 +1,7 @@
 <launch>
   <node name="room_navigation" pkg="room_navigation" type="room_navigation_node">
     <param name="gateway_detection_topic" value="/gateways_detected" />
+    <param name="semantic_feature_detection_topic" value="/semantic_features_detected" />
     <param name="distance_monitor_topic" value="/monitored_distance" />
     <param name="heading_monitor_topic" value="/monitored_heading" />
     <param name="desired_heading_topic" value="/desired_heading" />

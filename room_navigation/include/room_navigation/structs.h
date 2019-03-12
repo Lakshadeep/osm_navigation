@@ -1,8 +1,15 @@
-#ifndef CORRIDOR_NAVIGATION_STRUCTS_H
-#define CORRIDOR_NAVIGATION_STRUCTS_H
+#ifndef ROOM_NAVIGATION_STRUCTS_H
+#define ROOM_NAVIGATION_STRUCTS_H
 
 #include <vector>
 #include <cmath>
+#include <string>
+
+struct Point
+{
+    double x;
+    double y;
+};
 
 struct Hallway
 {
@@ -38,6 +45,41 @@ struct Gateways
     Hallway hallway;
     TJunction t_junction;
     XJunction x_junction;
+};
+
+struct WallSide
+{
+    double radius;
+    double angle;
+};
+
+struct DoorSide
+{
+    double radius;
+    double angle;
+};
+
+struct Pillar
+{
+    double radius;
+    double angle;
+};
+
+struct Feature
+{
+    std::string type;
+    double height;
+    double breast;
+    double width;
+    Point position;
+};
+
+struct SemanticFeatures
+{
+    std::vector<WallSide> wall_sides;
+    std::vector<DoorSide> door_sides;
+    std::vector<Pillar> pillars;
+    std::vector<Feature> features;
 };
 
 #endif
