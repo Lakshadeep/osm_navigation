@@ -96,8 +96,8 @@ private:
 
     // ROS related helper functions
     void resetMonitors();
-    void ResetHeadingMonitor();
-    void ResetDistanceMonitor();
+    void resetHeadingMonitor();
+    void resetDistanceMonitor();
     void reset();
     void enableHeadingController();
     void disableHeadingController();

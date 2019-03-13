@@ -16,12 +16,15 @@ public:
     void setNominalVelocity(double nominal_velocity);
     bool determineDirection(double &computed_direction, double curr_direction, Gateways gateways, SemanticFeatures semantic_features);
     bool isCorrectDirection(double left_ref_direction, double left_ref_range, double right_ref_direction, double right_ref_range);
-    bool isGoalReached(Gateways detected_gateways, double monitored_distance, double monitored_heading);
     double computeVelocity(double monitored_distance, double monitored_heading);
     void setGoal(int goal, int direction, float distance, std::vector<int> features, std::vector<int> features_directions, 
                  std::vector<float> features_distances);
     void reset();
     double getDesiredDirection();
+    double getNominalVelocity();
+    double getState();
+    bool isStateChanged(double monitored_distance, double monitored_heading, SemanticFeatures semantic_features);
+    double getInitialOrientation();
 
 private:
     // params
@@ -34,6 +37,8 @@ private:
     double desired_distance_;
     // 0 : T-junction | 1 : X-junction | 2 : left door | 3 : right door
     int goal_type_; 
+
+    int state_;
 
     std::vector<int> features_;
     std::vector<int> features_directions_;

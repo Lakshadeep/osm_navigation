@@ -18,4 +18,4 @@ float32[] available_features_distances
 float32 distance_travelled
 float32 current_direction
 float32 desired_direction
-bool recovery_mode
+int32 state

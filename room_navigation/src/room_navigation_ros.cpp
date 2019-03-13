@@ -48,10 +48,12 @@ void RoomNavigationROS::RoomNavigationExecute(const room_navigation::RoomNavigat
     std_msgs::Float32 desired_velocity_msg;
     room_navigation::RoomNavigationFeedback feedback;
 
+    double desired_orientation;
+
     enableHeadingController();
     enableMotionController();
-    setMotionControllerParams(0.7);
-    setMotionControllerDriveMode(0);
+    setMotionControllerParams(0.5);
+    setMotionControllerDriveMode(2);
 
     while(nh_.ok())
     {
@@ -71,45 +73,59 @@ void RoomNavigationROS::RoomNavigationExecute(const room_navigation::RoomNavigat
             feedback.distance_travelled = monitored_distance_;
             feedback.current_direction = monitored_heading_;
 
-            double desired_direction, desired_velocity;
+            /**
+            Room navigation state machine
+            --------------------------
+            State -1: turn to desired direction
+            State 0: travel desired distance
+            State 1: success
+            **/
 
-            if (recovery_enabled_)
+            if(room_navigation_.getState() == -1)
             {
-                desired_direction = room_navigation_.getDesiredDirection();
-                if(fabs(desired_direction - monitored_heading_) < 0.05)
+                desired_direction_msg.data = room_navigation_.getInitialOrientation();
+                desired_velocity_msg.data = room_navigation_.getNominalVelocity();
+
+                if(room_navigation_.isStateChanged(monitored_distance_, monitored_heading_, detected_semantic_features_))
                 {
-                    recovery_enabled_ = false;
-                    feedback.recovery_mode = 0;
+                    resetHeadingMonitor();
+                    resetDistanceMonitor();
+                    setMotionControllerDriveMode(1);
+                }
+            }
+            else if (room_navigation_.getState() == 0)
+            {
+                
+                if (room_navigation_.determineDirection(desired_orientation, monitored_heading_, 
+                                             detected_gateways_, detected_semantic_features_))
+                    desired_direction_msg.data = desired_orientation;
+                else
+                    desired_direction_msg.data = monitored_heading_;
+
+                desired_velocity_msg.data = room_navigation_.getNominalVelocity();
+
+                if(room_navigation_.isStateChanged(monitored_distance_, monitored_heading_, detected_semantic_features_))
+                {
                     setMotionControllerDriveMode(0);
+                    setMotionControllerParams(0.7);
+                    disableHeadingController();
+                    disableMotionController();
+                    
+                    reset();
+
+                    room_navigation_server_.setSucceeded(room_navigation::RoomNavigationResult(), "Goal reached");
+                    return;
                 }
             }
-            else
-            {
-                if (room_navigation_.determineDirection(desired_direction, monitored_heading_, detected_gateways_, 
-                                                        detected_semantic_features_))
-                {
-
-                }
-            }
-
-            desired_direction_msg.data = desired_direction;
-            desired_heading_publisher_.publish(desired_direction_msg);
             
-            feedback.desired_direction = desired_direction;
-            room_navigation_server_.publishFeedback(feedback);   
-
-            if (room_navigation_.isGoalReached(detected_gateways_, monitored_distance_, monitored_heading_))
-            {
-                reset();
-                disableHeadingController();
-                disableMotionController();
-                room_navigation_server_.setSucceeded(room_navigation::RoomNavigationResult(), "Goal reached");
-                desired_velocity = 0;
-                return;
-            }
-            desired_velocity_msg.data = desired_velocity;
+            desired_heading_publisher_.publish(desired_direction_msg);
             desired_velocity_publisher_.publish(desired_velocity_msg);
+
+
         }
+        feedback.desired_direction = desired_orientation;
+        feedback.state = room_navigation_.getState();
+        room_navigation_server_.publishFeedback(feedback);  
 
         r.sleep();
     }
@@ -290,11 +306,11 @@ void RoomNavigationROS::headingMonitorCallback(const std_msgs::Float32::ConstPtr
 
 void RoomNavigationROS::resetMonitors()
 {
-    ResetHeadingMonitor();
-    ResetDistanceMonitor();
+    resetHeadingMonitor();
+    resetDistanceMonitor();
 }
 
-void RoomNavigationROS::ResetHeadingMonitor()
+void RoomNavigationROS::resetHeadingMonitor()
 {
     robot_heading_monitor::Reset heading_reset_srv;
     heading_reset_srv.request.reset = true;
@@ -309,7 +325,7 @@ void RoomNavigationROS::ResetHeadingMonitor()
     }
 }
 
-void RoomNavigationROS::ResetDistanceMonitor()
+void RoomNavigationROS::resetDistanceMonitor()
 { 
     robot_distance_monitor::Reset distance_reset_srv;
     distance_reset_srv.request.reset = true;

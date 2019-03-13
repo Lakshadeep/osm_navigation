@@ -2,7 +2,7 @@
 #include <ros/ros.h>
 
 RoomNavigation::RoomNavigation():desired_direction_(0), recovery_direction_threshold_(1.0), 
-correction_direction_threshold_(0.06), desired_distance_(0), goal_type_(-1)
+correction_direction_threshold_(0.06), desired_distance_(0), goal_type_(-1), state_(-1)
 {
 }
 
@@ -25,9 +25,28 @@ void RoomNavigation::setNominalVelocity(double nominal_velocity)
     nominal_velocity_ = nominal_velocity;
 }
 
+double RoomNavigation::getNominalVelocity()
+{
+    return nominal_velocity_;
+}
+
 double RoomNavigation::getDesiredDirection()
 {
     return desired_direction_; 
+}
+
+double RoomNavigation::getInitialOrientation()
+{
+    if (desired_direction_ == 0)
+        return (M_PI/2.0);
+    else if (desired_direction_ == 2)
+        return (-M_PI/2.0);
+    return 0;
+}
+
+double RoomNavigation::getState()
+{
+    return state_;
 }
 
 bool RoomNavigation::determineDirection(double &computed_direction, double curr_direction, Gateways gateways,
@@ -137,21 +156,6 @@ bool RoomNavigation::isCorrectDirection(double left_ref_direction, double left_r
     return false;
 }
 
-bool RoomNavigation::isGoalReached(Gateways detected_gateways, double monitored_distance, double monitored_heading)
-{
-    if( monitored_distance > (0.8 * desired_distance_) && monitored_distance < (1.2 * desired_distance_))
-    {
-        if (monitored_heading > (desired_direction_ - 0.4) && monitored_heading < (desired_direction_ + 0.4))
-        {
-            if (goal_type_ == 0 && (detected_gateways.t_junction.left_turn_range > 0 || detected_gateways.t_junction.right_turn_range > 0))
-                return true;
-            else if (goal_type_ == 1 && detected_gateways.x_junction.left_turn_range > 0 && detected_gateways.x_junction.right_turn_range > 0)
-                return true;
-        }
-    }  
-    return false;
-}
-
 double RoomNavigation::computeVelocity(double monitored_distance, double monitored_heading)
 {
     double velocity = nominal_velocity_;
@@ -185,4 +189,33 @@ void RoomNavigation::reset()
     desired_direction_ = 0;
     desired_distance_ = 0;
     goal_type_ = -1;
+    state_ = -1;
+    features_.clear();
+    features_directions_.clear();
+    features_distances_.clear();
+}
+
+bool RoomNavigation::isStateChanged(double monitored_distance, double monitored_heading, SemanticFeatures semantic_features)
+{
+    if (state_ == -1 && desired_direction_ == 1)
+    {
+        state_ = 0;
+        return true;
+    }
+    else if(state_ == -1 && desired_direction_ == 0 && monitored_heading > (M_PI/2.0)) 
+    {
+        state_ = 0;
+        return true;
+    }
+    else if(state_ == -1 && desired_direction_ == 2 && monitored_heading < (-M_PI/2.0)) 
+    {
+        state_ = 0;
+        return true;
+    }
+    else if(state_ == 0 && monitored_distance > desired_distance_)
+    {
+        state_ = 1;
+        return true;
+    }
+    return false;
 }
