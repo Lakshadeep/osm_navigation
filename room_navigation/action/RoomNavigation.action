@@ -1,8 +1,5 @@
 # 0 : door
-# 1 : t junction
-# 2 : x junction
-# 3 : corner
-# 4 : wall
+# 1 : wall
 
 int32 goal_type
 
@@ -12,6 +9,10 @@ int32 goal_type
 
 int32 direction
 float32 distance
+
+int32[] available_features
+int32[] available_features_directions
+float32[] available_features_distances
 ---
 ---
 float32 distance_travelled

@@ -1,4 +1,5 @@
 #include <room_navigation/room_navigation.h>
+#include <ros/ros.h>
 
 RoomNavigation::RoomNavigation():desired_direction_(0), recovery_direction_threshold_(1.0), 
 correction_direction_threshold_(0.06), desired_distance_(0), goal_type_(-1)
@@ -29,24 +30,100 @@ double RoomNavigation::getDesiredDirection()
     return desired_direction_; 
 }
 
-bool RoomNavigation::determineDirection(double &computed_direction, double curr_direction, double left_ref_direction, 
-                                            double left_ref_range, double right_ref_direction, double right_ref_range)
+bool RoomNavigation::determineDirection(double &computed_direction, double curr_direction, Gateways gateways,
+                                        SemanticFeatures semantic_features)
 {
-       
-    if (fabs(desired_direction_ - curr_direction) < recovery_direction_threshold_)
-    { 
-        // NOTE: both the ranges greater then 0 indicates both are valid ref angles 
-        if(left_ref_range > 0  && right_ref_range > 0)
-            computed_direction = (left_ref_direction + right_ref_direction)/2.0;
-        else if (left_ref_range > 0)
-            computed_direction = curr_direction + left_ref_direction;  
-        else if (right_ref_range > 0)
-            computed_direction = curr_direction + right_ref_direction;
-        return true;
+    bool status = false;
+    for (int i = 0; i < features_.size(); i++)
+    {
+        status = status || computeReferenceDirection(features_[i], features_directions_[i], features_distances_[i], 
+                                           semantic_features, computed_direction);
+    }
+    computed_direction = computed_direction + curr_direction;
+    return status;
+}
+
+// NOTE: this function assumes that goal direction is in the front
+bool RoomNavigation::computeReferenceDirection(int feature_type, int feature_direction, double feature_distance, 
+                                               SemanticFeatures semantic_features, double &computed_direction)
+{
+    if (feature_type == 1)
+    {
+        WallSide ws = getReferenceWallSide(semantic_features.wall_sides, feature_direction, feature_distance);
+        if (ws.radius > 0)
+        {
+            if (feature_direction == 0)
+                computed_direction = ws.angle - (M_PI/2.0);
+            else if (feature_direction == 2)
+                computed_direction == ws.angle + (M_PI/2.0);
+            return true;
+        }
+        else
+        {
+            ROS_ERROR("No reference wall found");
+            return false;
+        }
     }
     else
+    {
+        ROS_ERROR("Only walls can be used for computing reference orientation");
         return false;
-      // enable recovery behaviour i.e stop the monitors until robot comes back in valid direction range
+    }
+}
+
+WallSide RoomNavigation::getReferenceWallSide(std::vector<WallSide> wall_sides, double direction, double distance)
+{
+    std::vector<WallSide> possible_wall_sides;
+    for (int i = 0; i < wall_sides.size(); i++)
+    {
+        if (getWallLength(wall_sides[i]) > 1.0 && wall_sides[i].radius > (0.8*distance) && wall_sides[i].radius < (1.2*distance))
+        {
+            possible_wall_sides.push_back(wall_sides[i]);
+        }
+    }
+
+    WallSide ws;
+
+    for (int i = 0; i < possible_wall_sides.size(); i++)
+    {
+        if (i == 0)
+        {
+            ws.corner1 = possible_wall_sides[i].corner1;
+            ws.corner2 = possible_wall_sides[i].corner2;
+        }
+        else
+            ws.corner2 = possible_wall_sides[i].corner2;
+
+        ws.radius = ws.radius + possible_wall_sides[i].radius;
+        ws.angle = ws.angle + possible_wall_sides[i].angle;
+    }
+
+    if (possible_wall_sides.size() > 0)
+    {
+        ws.radius = ws.radius/possible_wall_sides.size();
+        ws.angle = ws.angle/possible_wall_sides.size();
+    }
+    else
+    {
+        ws.radius = 0;
+        ws.angle = 0;
+    }
+    return ws;
+}
+
+double RoomNavigation::getWallLength(WallSide ws)
+{
+    return pow(pow(ws.corner1.x - ws.corner2.x, 2) + pow(ws.corner1.y - ws.corner2.y, 2) ,0.5);
+}
+
+int RoomNavigation::angleToDirection(double angle)
+{
+    if (angle < (3*M_PI/4) && angle > (M_PI/4)) 
+        return 0;
+    else if (angle < (M_PI/4) && angle > (-M_PI/4))
+        return 1;
+    else if (angle < (-M_PI/4) && angle > (-3*M_PI/4))
+        return 2;
 }
 
 bool RoomNavigation::isCorrectDirection(double left_ref_direction, double left_ref_range, 
@@ -70,8 +147,6 @@ bool RoomNavigation::isGoalReached(Gateways detected_gateways, double monitored_
                 return true;
             else if (goal_type_ == 1 && detected_gateways.x_junction.left_turn_range > 0 && detected_gateways.x_junction.right_turn_range > 0)
                 return true;
-
-            // TODO: implement right/left door navigation goals
         }
     }  
     return false;
@@ -94,11 +169,15 @@ double RoomNavigation::computeVelocity(double monitored_distance, double monitor
     return velocity;
 }
 
-void RoomNavigation::setGoal(int goal, double direction, double distance)
+void RoomNavigation::setGoal(int goal, int direction, float distance, std::vector<int> features, std::vector<int> features_directions, 
+                            std::vector<float> features_distances)
 {
     goal_type_ = goal;
     desired_direction_ = direction;
     desired_distance_ = distance;
+    features_ = features;
+    features_directions_ = features_directions;
+    features_distances_ = features_distances;
 }
 
 void RoomNavigation::reset()

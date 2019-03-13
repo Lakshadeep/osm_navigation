@@ -51,12 +51,16 @@ struct WallSide
 {
     double radius;
     double angle;
+    Point corner1;
+    Point corner2;
 };
 
 struct DoorSide
 {
     double radius;
     double angle;
+    Point corner1;
+    Point corner2;
 };
 
 struct Pillar

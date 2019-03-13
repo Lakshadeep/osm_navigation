@@ -40,7 +40,8 @@ void RoomNavigationROS::run()
 void RoomNavigationROS::RoomNavigationExecute(const room_navigation::RoomNavigationGoalConstPtr& goal)
 {
     reset();
-    room_navigation_.setGoal(goal->goal_type, goal->direction, goal->distance);
+    room_navigation_.setGoal(goal->goal_type, goal->direction, goal->distance, goal->available_features, 
+                             goal->available_features_directions, goal->available_features_distances);
     ros::Rate r(controller_frequency_);
 
     std_msgs::Float32 desired_direction_msg;
@@ -84,23 +85,10 @@ void RoomNavigationROS::RoomNavigationExecute(const room_navigation::RoomNavigat
             }
             else
             {
-                if (room_navigation_.determineDirection(desired_direction, monitored_heading_, detected_gateways_.hallway.left_angle, 
-                detected_gateways_.hallway.left_range, detected_gateways_.hallway.right_angle, detected_gateways_.hallway.right_range))
-                {   
-                    desired_velocity = room_navigation_.computeVelocity(monitored_distance_, monitored_heading_);
-
-                    if(room_navigation_.isCorrectDirection(detected_gateways_.hallway.left_angle, detected_gateways_.hallway.left_range, 
-                    detected_gateways_.hallway.right_angle, detected_gateways_.hallway.right_range))
-                    {
-                        ResetHeadingMonitor();
-                        room_navigation_.setGoal(goal->goal_type, desired_direction, goal->distance);
-                    }
-                }
-                else
+                if (room_navigation_.determineDirection(desired_direction, monitored_heading_, detected_gateways_, 
+                                                        detected_semantic_features_))
                 {
-                    feedback.recovery_mode = 1;
-                    recovery_enabled_ = true;
-                    setMotionControllerDriveMode(2);
+
                 }
             }
 
@@ -249,6 +237,10 @@ void RoomNavigationROS::semanticFeatureDetectionCallback(const osm_map_msgs::Sem
         WallSide ws;
         ws.radius = msg->wall_sides[i].radius;
         ws.angle = msg->wall_sides[i].angle;
+        ws.corner1.x = msg->wall_sides[i].corners[0].x;
+        ws.corner1.y = msg->wall_sides[i].corners[0].y;
+        ws.corner2.x = msg->wall_sides[i].corners[1].x;
+        ws.corner2.y = msg->wall_sides[i].corners[1].y;
         detected_semantic_features_.wall_sides.push_back(ws);
     }
 
@@ -257,6 +249,10 @@ void RoomNavigationROS::semanticFeatureDetectionCallback(const osm_map_msgs::Sem
         DoorSide ds;
         ds.radius = msg->door_sides[i].radius;
         ds.angle = msg->door_sides[i].angle;
+        ds.corner1.x = msg->door_sides[i].corners[0].x;
+        ds.corner1.y = msg->door_sides[i].corners[0].y;
+        ds.corner2.x = msg->door_sides[i].corners[1].x;
+        ds.corner2.y = msg->door_sides[i].corners[1].y;
         detected_semantic_features_.door_sides.push_back(ds);
     }
 
