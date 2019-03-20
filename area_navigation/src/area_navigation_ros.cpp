@@ -1,15 +1,12 @@
 #include "area_navigation/area_navigation_ros.h"
 
 AreaNavigationROS::AreaNavigationROS(ros::NodeHandle& nh): nh_(nh), area_navigation_server_(nh,"/area_navigation_server",
-  boost::bind(&AreaNavigationROS::AreaNavigationExecute, this, _1),false), monitored_heading_(0), monitored_distance_(0),
-  recovery_enabled_(false)
+  boost::bind(&AreaNavigationROS::AreaNavigationExecute, this, _1),false), monitored_heading_(0), monitored_distance_(0)
 {
     loadParameters(); 
     
     // subscribers
-    gateway_detection_subscriber_ = nh_.subscribe(gateway_detection_topic_, 1, &AreaNavigationROS::gatewayDetectionCallback, this);
-    semantic_feature_detection_subscriber_ = nh_.subscribe(semantic_feature_detection_topic_, 1, 
-                                             &AreaNavigationROS::semanticFeatureDetectionCallback, this);
+    navigation_signs_subscriber_ = nh_.subscribe(navigation_signs_topic_, 1, &AreaNavigationROS::navigationSignsCallback, this);
     distance_monitor_subscriber_ = nh_.subscribe(distance_monitor_topic_, 1, &AreaNavigationROS::distanceMonitorCallback, this);
     heading_monitor_subscriber_ = nh_.subscribe(heading_monitor_topic_, 1, &AreaNavigationROS::headingMonitorCallback, this);
 
@@ -40,8 +37,7 @@ void AreaNavigationROS::run()
 void AreaNavigationROS::AreaNavigationExecute(const area_navigation::AreaNavigationGoalConstPtr& goal)
 {
     reset();
-    area_navigation_.setGoal(goal->goal_type, goal->direction, goal->distance, goal->available_features, 
-                             goal->available_features_directions, goal->available_features_distances);
+    area_navigation_.setGoal(goal->goal_type);
     ros::Rate r(controller_frequency_);
 
     std_msgs::Float32 desired_direction_msg;
@@ -70,7 +66,7 @@ void AreaNavigationROS::AreaNavigationExecute(const area_navigation::AreaNavigat
         }
         else
         {
-            feedback.distance_travelled = monitored_distance_;
+            feedback.remaining_distance = monitored_distance_;
             feedback.current_direction = monitored_heading_;
 
             /**
@@ -83,10 +79,10 @@ void AreaNavigationROS::AreaNavigationExecute(const area_navigation::AreaNavigat
 
             if(area_navigation_.getState() == -1)
             {
-                desired_direction_msg.data = area_navigation_.getInitialOrientation();
+                desired_direction_msg.data = 0;
                 desired_velocity_msg.data = area_navigation_.getNominalVelocity();
 
-                if(area_navigation_.isStateChanged(monitored_distance_, monitored_heading_, detected_semantic_features_))
+                if(area_navigation_.isStateChanged(monitored_distance_, monitored_heading_, navigation_signs_))
                 {
                     resetHeadingMonitor();
                     resetDistanceMonitor();
@@ -96,15 +92,14 @@ void AreaNavigationROS::AreaNavigationExecute(const area_navigation::AreaNavigat
             else if (area_navigation_.getState() == 0)
             {
                 
-                if (area_navigation_.determineDirection(desired_orientation, monitored_heading_, 
-                                             detected_gateways_, detected_semantic_features_))
+                if (area_navigation_.determineDirection(desired_orientation, monitored_heading_, navigation_signs_))
                     desired_direction_msg.data = desired_orientation;
                 else
                     desired_direction_msg.data = 0;
 
                 desired_velocity_msg.data = area_navigation_.getNominalVelocity();
 
-                if(area_navigation_.isStateChanged(monitored_distance_, monitored_heading_, detected_semantic_features_))
+                if(area_navigation_.isStateChanged(monitored_distance_, monitored_heading_, navigation_signs_))
                 {
                     setMotionControllerDriveMode(0);
                     setMotionControllerParams(0.7);
@@ -134,15 +129,10 @@ void AreaNavigationROS::AreaNavigationExecute(const area_navigation::AreaNavigat
 void AreaNavigationROS::loadParameters()
 {
     // detection
-    std::string semantic_feature_detection_topic;
-    nh_.param<std::string>("semantic_feature_detection_topic", semantic_feature_detection_topic, "/semantic_features_detected");
-    semantic_feature_detection_topic_ = semantic_feature_detection_topic;
-    ROS_DEBUG("semantic_feature_detection_topic: %s", semantic_feature_detection_topic_.c_str());
-
-    std::string gateway_detection_topic;
-    nh_.param<std::string>("gateway_detection_topic", gateway_detection_topic, "/gateways_detected");
-    gateway_detection_topic_ = gateway_detection_topic;
-    ROS_DEBUG("gateway_detection_topic: %s", gateway_detection_topic_.c_str());
+    std::string navigation_signs_topic;
+    nh_.param<std::string>("navigation_signs_topic", navigation_signs_topic, "/navigation_signs_detected");
+    navigation_signs_topic_ = navigation_signs_topic;
+    ROS_DEBUG("navigation_signs_topic: %s", navigation_signs_topic_.c_str());
 
     // monitors
     std::string distance_monitor_topic;
@@ -197,16 +187,6 @@ void AreaNavigationROS::loadParameters()
     ROS_DEBUG("motion_control_drive_mode_service: %s", motion_control_drive_mode_service.c_str());
 
     // corridor navigation params
-    double recovery_direction_threshold;
-    nh_.param<double>("recovery_direction_threshold", recovery_direction_threshold, 1.0);
-    area_navigation_.setRecoveryDirectionThreshold(recovery_direction_threshold);
-    ROS_DEBUG("recovery_direction_threshold: %f", recovery_direction_threshold);
-
-    double correction_direction_threshold;
-    nh_.param<double>("correction_direction_threshold", correction_direction_threshold, 0.06);
-    area_navigation_.setCorrectionDirectionThreshold(correction_direction_threshold);
-    ROS_DEBUG("correction_direction_threshold: %f", correction_direction_threshold);
-
     double velocity;
     nh_.param<double>("velocity", velocity, 0.3);
     area_navigation_.setNominalVelocity(velocity);
@@ -218,80 +198,9 @@ void AreaNavigationROS::loadParameters()
     ROS_DEBUG("controller_frequency: %d", controller_frequency);
 }
 
-void AreaNavigationROS::gatewayDetectionCallback(const gateway_msgs::Gateways::ConstPtr& msg)
+void AreaNavigationROS::navigationSignsCallback(const navigation_sign_msgs::NavigationSigns::ConstPtr& msg)
 {
-    detected_gateways_.hallway.left_angle = msg->hallway.left_angle;
-    detected_gateways_.hallway.right_angle = msg->hallway.right_angle;
-    detected_gateways_.hallway.left_range = msg->hallway.left_range;
-    detected_gateways_.hallway.right_range = msg->hallway.right_range;
-
-    detected_gateways_.t_junction.left_turn_angle = msg->t_junction.left_turn_angle;
-    detected_gateways_.t_junction.left_turn_range = msg->t_junction.left_turn_range;
-    detected_gateways_.t_junction.right_turn_angle = msg->t_junction.right_turn_angle;
-    detected_gateways_.t_junction.right_turn_range = msg->t_junction.right_turn_range;
-    detected_gateways_.t_junction.front_angle = msg->t_junction.front_angle;
-    detected_gateways_.t_junction.front_range = msg->t_junction.front_range;
-
-    detected_gateways_.x_junction.left_turn_angle = msg->x_junction.left_turn_angle;
-    detected_gateways_.x_junction.left_turn_range = msg->x_junction.left_turn_range;
-    detected_gateways_.x_junction.right_turn_angle = msg->x_junction.right_turn_angle;
-    detected_gateways_.x_junction.right_turn_range = msg->x_junction.right_turn_range;
-    detected_gateways_.x_junction.front_angle = msg->x_junction.front_angle;
-    detected_gateways_.x_junction.front_range_x = msg->x_junction.front_range_x;
-    detected_gateways_.x_junction.front_range_y = msg->x_junction.front_range_y;
-}
-
-void AreaNavigationROS::semanticFeatureDetectionCallback(const osm_map_msgs::SemanticMap::ConstPtr& msg)
-{
-    detected_semantic_features_.wall_sides.clear();
-    detected_semantic_features_.door_sides.clear();
-    detected_semantic_features_.pillars.clear();
-    detected_semantic_features_.features.clear();
     
-    for (int i = 0; i < msg->wall_sides.size(); i++)
-    {
-        WallSide ws;
-        ws.radius = msg->wall_sides[i].radius;
-        ws.angle = msg->wall_sides[i].angle;
-        ws.corner1.x = msg->wall_sides[i].corners[0].x;
-        ws.corner1.y = msg->wall_sides[i].corners[0].y;
-        ws.corner2.x = msg->wall_sides[i].corners[1].x;
-        ws.corner2.y = msg->wall_sides[i].corners[1].y;
-        detected_semantic_features_.wall_sides.push_back(ws);
-    }
-
-    for (int i = 0; i < msg->door_sides.size(); i++)
-    {
-        DoorSide ds;
-        ds.radius = msg->door_sides[i].radius;
-        ds.angle = msg->door_sides[i].angle;
-        ds.corner1.x = msg->door_sides[i].corners[0].x;
-        ds.corner1.y = msg->door_sides[i].corners[0].y;
-        ds.corner2.x = msg->door_sides[i].corners[1].x;
-        ds.corner2.y = msg->door_sides[i].corners[1].y;
-        detected_semantic_features_.door_sides.push_back(ds);
-    }
-
-    for (int i = 0; i < msg->pillars.size(); i++)
-    {
-        Pillar p;
-        p.radius = msg->pillars[i].radius;
-        p.angle = msg->pillars[i].angle;
-        detected_semantic_features_.pillars.push_back(p);
-    }
-
-    for (int i = 0; i < msg->features.size(); i++)
-    {
-        Feature f;
-        f.type = msg->features[i].type;
-        f.height = msg->features[i].height;
-        f.breast = msg->features[i].breast;
-        f.width = msg->features[i].width;
-        f.position.x = msg->features[i].position.x;
-        f.position.y = msg->features[i].position.y;
-        detected_semantic_features_.features.push_back(f);
-    }
-
 }
 
 void AreaNavigationROS::distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg)

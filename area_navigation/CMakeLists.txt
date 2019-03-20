@@ -13,15 +13,15 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   nav_msgs
-  gateway_detection
   robot_distance_monitor
   robot_heading_monitor
-  gateway_msgs
+  navigation_sign_msgs
   osm_map_msgs
   heading_control
   actionlib_msgs
   actionlib
   motion_control
+  navigation_sign_detection
 )
 
 add_action_files(
@@ -38,7 +38,7 @@ generate_messages(
   std_msgs
   geometry_msgs
   nav_msgs
-  gateway_msgs
+  navigation_sign_msgs
   osm_map_msgs
   heading_control
   actionlib_msgs
