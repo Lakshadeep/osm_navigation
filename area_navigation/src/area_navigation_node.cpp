@@ -1,4 +1,4 @@
-#include "room_navigation/room_navigation_ros.h"
+#include "area_navigation/area_navigation_ros.h"
 #include <ros/console.h>
 
 int main(int argc, char **argv)
@@ -9,13 +9,13 @@ int main(int argc, char **argv)
         ros::console::notifyLoggerLevelsChanged();
     }
 
-    ROS_DEBUG("Starting room navigation node");
+    ROS_DEBUG("Starting area navigation node");
 
-    ros::init(argc, argv, "room_navigation_node");
+    ros::init(argc, argv, "area_navigation_node");
     ros::NodeHandle nh("~");
-    RoomNavigationROS room_navigation_ros(nh);
+    AreaNavigationROS area_navigation_ros(nh);
 
-    room_navigation_ros.run();
+    area_navigation_ros.run();
     
     ros::spin();
 

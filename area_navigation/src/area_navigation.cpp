@@ -1,41 +1,41 @@
-#include <room_navigation/room_navigation.h>
+#include <area_navigation/area_navigation.h>
 #include <ros/ros.h>
 
-RoomNavigation::RoomNavigation():desired_direction_(0), recovery_direction_threshold_(1.0), 
+AreaNavigation::AreaNavigation():desired_direction_(0), recovery_direction_threshold_(1.0), 
 correction_direction_threshold_(0.06), desired_distance_(0), goal_type_(-1), state_(-1)
 {
 }
 
-RoomNavigation::~RoomNavigation()
+AreaNavigation::~AreaNavigation()
 {
 }
 
-void RoomNavigation::setRecoveryDirectionThreshold(double recovery_direction_threshold)
+void AreaNavigation::setRecoveryDirectionThreshold(double recovery_direction_threshold)
 {
     recovery_direction_threshold_ = recovery_direction_threshold;
 }
 
-void RoomNavigation::setCorrectionDirectionThreshold(double correction_direction_threshold)
+void AreaNavigation::setCorrectionDirectionThreshold(double correction_direction_threshold)
 {
     correction_direction_threshold_ = correction_direction_threshold;
 }
 
-void RoomNavigation::setNominalVelocity(double nominal_velocity)
+void AreaNavigation::setNominalVelocity(double nominal_velocity)
 {
     nominal_velocity_ = nominal_velocity;
 }
 
-double RoomNavigation::getNominalVelocity()
+double AreaNavigation::getNominalVelocity()
 {
     return nominal_velocity_;
 }
 
-double RoomNavigation::getDesiredDirection()
+double AreaNavigation::getDesiredDirection()
 {
     return desired_direction_; 
 }
 
-double RoomNavigation::getInitialOrientation()
+double AreaNavigation::getInitialOrientation()
 {
     if (desired_direction_ == 0)
         return (M_PI/2.0);
@@ -44,12 +44,12 @@ double RoomNavigation::getInitialOrientation()
     return 0;
 }
 
-double RoomNavigation::getState()
+double AreaNavigation::getState()
 {
     return state_;
 }
 
-bool RoomNavigation::determineDirection(double &computed_direction, double curr_direction, Gateways gateways,
+bool AreaNavigation::determineDirection(double &computed_direction, double curr_direction, Gateways gateways,
                                         SemanticFeatures semantic_features)
 {
     bool status = false;
@@ -63,7 +63,7 @@ bool RoomNavigation::determineDirection(double &computed_direction, double curr_
 }
 
 // NOTE: this function assumes that goal direction is in the front
-bool RoomNavigation::computeReferenceDirection(int feature_type, int feature_direction, double feature_distance, 
+bool AreaNavigation::computeReferenceDirection(int feature_type, int feature_direction, double feature_distance, 
                                                SemanticFeatures semantic_features, double &computed_direction)
 {
     if (feature_type == 1)
@@ -90,12 +90,13 @@ bool RoomNavigation::computeReferenceDirection(int feature_type, int feature_dir
     }
 }
 
-WallSide RoomNavigation::getReferenceWallSide(std::vector<WallSide> wall_sides, double direction, double distance)
+WallSide AreaNavigation::getReferenceWallSide(std::vector<WallSide> wall_sides, double direction, double distance)
 {
     std::vector<WallSide> possible_wall_sides;
     for (int i = 0; i < wall_sides.size(); i++)
     {
-        if (getWallLength(wall_sides[i]) > 1.0 && wall_sides[i].radius > (0.8*distance) && wall_sides[i].radius < (1.2*distance))
+        if (getWallLength(wall_sides[i]) > 0.5 && angleToDirection(wall_sides[i].angle) == direction && 
+            wall_sides[i].radius > (0.8*distance) && wall_sides[i].radius < (1.2*distance))
         {
             possible_wall_sides.push_back(wall_sides[i]);
         }
@@ -121,6 +122,7 @@ WallSide RoomNavigation::getReferenceWallSide(std::vector<WallSide> wall_sides, 
     {
         ws.radius = ws.radius/possible_wall_sides.size();
         ws.angle = ws.angle/possible_wall_sides.size();
+        ROS_ERROR("radius %f Angle %f", ws.radius, ws.angle);
     }
     else
     {
@@ -130,12 +132,12 @@ WallSide RoomNavigation::getReferenceWallSide(std::vector<WallSide> wall_sides, 
     return ws;
 }
 
-double RoomNavigation::getWallLength(WallSide ws)
+double AreaNavigation::getWallLength(WallSide ws)
 {
     return pow(pow(ws.corner1.x - ws.corner2.x, 2) + pow(ws.corner1.y - ws.corner2.y, 2) ,0.5);
 }
 
-int RoomNavigation::angleToDirection(double angle)
+int AreaNavigation::angleToDirection(double angle)
 {
     if (angle < (3*M_PI/4) && angle > (M_PI/4)) 
         return 0;
@@ -145,7 +147,7 @@ int RoomNavigation::angleToDirection(double angle)
         return 2;
 }
 
-bool RoomNavigation::isCorrectDirection(double left_ref_direction, double left_ref_range, 
+bool AreaNavigation::isCorrectDirection(double left_ref_direction, double left_ref_range, 
                                             double right_ref_direction, double right_ref_range)
 {
     if(left_ref_range > 0  && right_ref_range > 0)
@@ -156,7 +158,7 @@ bool RoomNavigation::isCorrectDirection(double left_ref_direction, double left_r
     return false;
 }
 
-double RoomNavigation::computeVelocity(double monitored_distance, double monitored_heading)
+double AreaNavigation::computeVelocity(double monitored_distance, double monitored_heading)
 {
     double velocity = nominal_velocity_;
 
@@ -173,7 +175,7 @@ double RoomNavigation::computeVelocity(double monitored_distance, double monitor
     return velocity;
 }
 
-void RoomNavigation::setGoal(int goal, int direction, float distance, std::vector<int> features, std::vector<int> features_directions, 
+void AreaNavigation::setGoal(int goal, int direction, float distance, std::vector<int> features, std::vector<int> features_directions, 
                             std::vector<float> features_distances)
 {
     goal_type_ = goal;
@@ -184,9 +186,9 @@ void RoomNavigation::setGoal(int goal, int direction, float distance, std::vecto
     features_distances_ = features_distances;
 }
 
-void RoomNavigation::reset()
+void AreaNavigation::reset()
 {
-    desired_direction_ = 0;
+    desired_direction_ = 1;
     desired_distance_ = 0;
     goal_type_ = -1;
     state_ = -1;
@@ -195,19 +197,20 @@ void RoomNavigation::reset()
     features_distances_.clear();
 }
 
-bool RoomNavigation::isStateChanged(double monitored_distance, double monitored_heading, SemanticFeatures semantic_features)
+bool AreaNavigation::isStateChanged(double monitored_distance, double monitored_heading, SemanticFeatures semantic_features)
 {
+    ROS_ERROR("Desired direction %d", desired_direction_);
     if (state_ == -1 && desired_direction_ == 1)
     {
         state_ = 0;
         return true;
     }
-    else if(state_ == -1 && desired_direction_ == 0 && monitored_heading > (M_PI/2.0)) 
+    else if(state_ == -1 && desired_direction_ == 0 && (fabs(monitored_heading) - (M_PI/2.0)) < 0.05 ) 
     {
         state_ = 0;
         return true;
     }
-    else if(state_ == -1 && desired_direction_ == 2 && monitored_heading < (-M_PI/2.0)) 
+    else if(state_ == -1 && desired_direction_ == 2 && (fabs(monitored_heading) - (M_PI/2.0)) < 0.05 ) 
     {
         state_ = 0;
         return true;

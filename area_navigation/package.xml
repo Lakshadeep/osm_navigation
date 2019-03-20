@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>room_navigation</name>
+  <name>area_navigation</name>
   <version>0.1.0</version>
-  <description>The room navigation package</description>
+  <description>The area navigation package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

@@ -1,16 +1,16 @@
-#ifndef ROOM_NAVIGATION_H
-#define ROOM_NAVIGATION_H
+#ifndef AREA_NAVIGATION_H
+#define AREA_NAVIGATION_H
 
 #include <vector>
 #include <cmath>
-#include <room_navigation/structs.h>
+#include <area_navigation/structs.h>
 
-class RoomNavigation
+class AreaNavigation
 {
 
 public:
-    RoomNavigation();
-    ~RoomNavigation();
+    AreaNavigation();
+    ~AreaNavigation();
     void setRecoveryDirectionThreshold(double recovery_direction_threshold);
     void setCorrectionDirectionThreshold(double correction_direction_threshold);
     void setNominalVelocity(double nominal_velocity);

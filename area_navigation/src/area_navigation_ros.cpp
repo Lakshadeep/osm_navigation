@@ -1,17 +1,17 @@
-#include "room_navigation/room_navigation_ros.h"
+#include "area_navigation/area_navigation_ros.h"
 
-RoomNavigationROS::RoomNavigationROS(ros::NodeHandle& nh): nh_(nh), room_navigation_server_(nh,"/room_navigation_server",
-  boost::bind(&RoomNavigationROS::RoomNavigationExecute, this, _1),false), monitored_heading_(0), monitored_distance_(0),
+AreaNavigationROS::AreaNavigationROS(ros::NodeHandle& nh): nh_(nh), area_navigation_server_(nh,"/area_navigation_server",
+  boost::bind(&AreaNavigationROS::AreaNavigationExecute, this, _1),false), monitored_heading_(0), monitored_distance_(0),
   recovery_enabled_(false)
 {
     loadParameters(); 
     
     // subscribers
-    gateway_detection_subscriber_ = nh_.subscribe(gateway_detection_topic_, 1, &RoomNavigationROS::gatewayDetectionCallback, this);
+    gateway_detection_subscriber_ = nh_.subscribe(gateway_detection_topic_, 1, &AreaNavigationROS::gatewayDetectionCallback, this);
     semantic_feature_detection_subscriber_ = nh_.subscribe(semantic_feature_detection_topic_, 1, 
-                                             &RoomNavigationROS::semanticFeatureDetectionCallback, this);
-    distance_monitor_subscriber_ = nh_.subscribe(distance_monitor_topic_, 1, &RoomNavigationROS::distanceMonitorCallback, this);
-    heading_monitor_subscriber_ = nh_.subscribe(heading_monitor_topic_, 1, &RoomNavigationROS::headingMonitorCallback, this);
+                                             &AreaNavigationROS::semanticFeatureDetectionCallback, this);
+    distance_monitor_subscriber_ = nh_.subscribe(distance_monitor_topic_, 1, &AreaNavigationROS::distanceMonitorCallback, this);
+    heading_monitor_subscriber_ = nh_.subscribe(heading_monitor_topic_, 1, &AreaNavigationROS::headingMonitorCallback, this);
 
     // publishers
     desired_heading_publisher_ = nh_.advertise<std_msgs::Float32>(desired_heading_topic_, 1);
@@ -27,26 +27,26 @@ RoomNavigationROS::RoomNavigationROS(ros::NodeHandle& nh): nh_(nh), room_navigat
     motion_control_drive_mode_service_client_ = nh_.serviceClient<motion_control::DriveMode>(motion_control_drive_mode_service_);
 }
 
-RoomNavigationROS::~RoomNavigationROS()
+AreaNavigationROS::~AreaNavigationROS()
 {
 }
 
-void RoomNavigationROS::run()
+void AreaNavigationROS::run()
 {
-    room_navigation_server_.start();
-    ROS_INFO("Room navigation action server started");
+    area_navigation_server_.start();
+    ROS_INFO("Area navigation action server started");
 }
 
-void RoomNavigationROS::RoomNavigationExecute(const room_navigation::RoomNavigationGoalConstPtr& goal)
+void AreaNavigationROS::AreaNavigationExecute(const area_navigation::AreaNavigationGoalConstPtr& goal)
 {
     reset();
-    room_navigation_.setGoal(goal->goal_type, goal->direction, goal->distance, goal->available_features, 
+    area_navigation_.setGoal(goal->goal_type, goal->direction, goal->distance, goal->available_features, 
                              goal->available_features_directions, goal->available_features_distances);
     ros::Rate r(controller_frequency_);
 
     std_msgs::Float32 desired_direction_msg;
     std_msgs::Float32 desired_velocity_msg;
-    room_navigation::RoomNavigationFeedback feedback;
+    area_navigation::AreaNavigationFeedback feedback;
 
     double desired_orientation;
 
@@ -57,14 +57,14 @@ void RoomNavigationROS::RoomNavigationExecute(const room_navigation::RoomNavigat
 
     while(nh_.ok())
     {
-        if(room_navigation_server_.isPreemptRequested())
+        if(area_navigation_server_.isPreemptRequested())
         {
             reset();
             disableHeadingController();
             disableMotionController();
             //notify the ActionServer that we've successfully preempted
-            ROS_DEBUG_NAMED("room_navigation", "Room navigation preempting the current goal");
-            room_navigation_server_.setPreempted();
+            ROS_DEBUG_NAMED("area_navigation", "Area navigation preempting the current goal");
+            area_navigation_server_.setPreempted();
 
             return;
         }
@@ -74,37 +74,37 @@ void RoomNavigationROS::RoomNavigationExecute(const room_navigation::RoomNavigat
             feedback.current_direction = monitored_heading_;
 
             /**
-            Room navigation state machine
+            Area navigation state machine
             --------------------------
             State -1: turn to desired direction
             State 0: travel desired distance
             State 1: success
             **/
 
-            if(room_navigation_.getState() == -1)
+            if(area_navigation_.getState() == -1)
             {
-                desired_direction_msg.data = room_navigation_.getInitialOrientation();
-                desired_velocity_msg.data = room_navigation_.getNominalVelocity();
+                desired_direction_msg.data = area_navigation_.getInitialOrientation();
+                desired_velocity_msg.data = area_navigation_.getNominalVelocity();
 
-                if(room_navigation_.isStateChanged(monitored_distance_, monitored_heading_, detected_semantic_features_))
+                if(area_navigation_.isStateChanged(monitored_distance_, monitored_heading_, detected_semantic_features_))
                 {
                     resetHeadingMonitor();
                     resetDistanceMonitor();
                     setMotionControllerDriveMode(1);
                 }
             }
-            else if (room_navigation_.getState() == 0)
+            else if (area_navigation_.getState() == 0)
             {
                 
-                if (room_navigation_.determineDirection(desired_orientation, monitored_heading_, 
+                if (area_navigation_.determineDirection(desired_orientation, monitored_heading_, 
                                              detected_gateways_, detected_semantic_features_))
                     desired_direction_msg.data = desired_orientation;
                 else
-                    desired_direction_msg.data = monitored_heading_;
+                    desired_direction_msg.data = 0;
 
-                desired_velocity_msg.data = room_navigation_.getNominalVelocity();
+                desired_velocity_msg.data = area_navigation_.getNominalVelocity();
 
-                if(room_navigation_.isStateChanged(monitored_distance_, monitored_heading_, detected_semantic_features_))
+                if(area_navigation_.isStateChanged(monitored_distance_, monitored_heading_, detected_semantic_features_))
                 {
                     setMotionControllerDriveMode(0);
                     setMotionControllerParams(0.7);
@@ -113,7 +113,7 @@ void RoomNavigationROS::RoomNavigationExecute(const room_navigation::RoomNavigat
                     
                     reset();
 
-                    room_navigation_server_.setSucceeded(room_navigation::RoomNavigationResult(), "Goal reached");
+                    area_navigation_server_.setSucceeded(area_navigation::AreaNavigationResult(), "Goal reached");
                     return;
                 }
             }
@@ -124,14 +124,14 @@ void RoomNavigationROS::RoomNavigationExecute(const room_navigation::RoomNavigat
 
         }
         feedback.desired_direction = desired_orientation;
-        feedback.state = room_navigation_.getState();
-        room_navigation_server_.publishFeedback(feedback);  
+        feedback.state = area_navigation_.getState();
+        area_navigation_server_.publishFeedback(feedback);  
 
         r.sleep();
     }
 }
 
-void RoomNavigationROS::loadParameters()
+void AreaNavigationROS::loadParameters()
 {
     // detection
     std::string semantic_feature_detection_topic;
@@ -199,17 +199,17 @@ void RoomNavigationROS::loadParameters()
     // corridor navigation params
     double recovery_direction_threshold;
     nh_.param<double>("recovery_direction_threshold", recovery_direction_threshold, 1.0);
-    room_navigation_.setRecoveryDirectionThreshold(recovery_direction_threshold);
+    area_navigation_.setRecoveryDirectionThreshold(recovery_direction_threshold);
     ROS_DEBUG("recovery_direction_threshold: %f", recovery_direction_threshold);
 
     double correction_direction_threshold;
     nh_.param<double>("correction_direction_threshold", correction_direction_threshold, 0.06);
-    room_navigation_.setCorrectionDirectionThreshold(correction_direction_threshold);
+    area_navigation_.setCorrectionDirectionThreshold(correction_direction_threshold);
     ROS_DEBUG("correction_direction_threshold: %f", correction_direction_threshold);
 
     double velocity;
     nh_.param<double>("velocity", velocity, 0.3);
-    room_navigation_.setNominalVelocity(velocity);
+    area_navigation_.setNominalVelocity(velocity);
     ROS_DEBUG("velocity: %f", velocity);
 
     int controller_frequency;
@@ -218,7 +218,7 @@ void RoomNavigationROS::loadParameters()
     ROS_DEBUG("controller_frequency: %d", controller_frequency);
 }
 
-void RoomNavigationROS::gatewayDetectionCallback(const gateway_msgs::Gateways::ConstPtr& msg)
+void AreaNavigationROS::gatewayDetectionCallback(const gateway_msgs::Gateways::ConstPtr& msg)
 {
     detected_gateways_.hallway.left_angle = msg->hallway.left_angle;
     detected_gateways_.hallway.right_angle = msg->hallway.right_angle;
@@ -241,7 +241,7 @@ void RoomNavigationROS::gatewayDetectionCallback(const gateway_msgs::Gateways::C
     detected_gateways_.x_junction.front_range_y = msg->x_junction.front_range_y;
 }
 
-void RoomNavigationROS::semanticFeatureDetectionCallback(const osm_map_msgs::SemanticMap::ConstPtr& msg)
+void AreaNavigationROS::semanticFeatureDetectionCallback(const osm_map_msgs::SemanticMap::ConstPtr& msg)
 {
     detected_semantic_features_.wall_sides.clear();
     detected_semantic_features_.door_sides.clear();
@@ -294,23 +294,23 @@ void RoomNavigationROS::semanticFeatureDetectionCallback(const osm_map_msgs::Sem
 
 }
 
-void RoomNavigationROS::distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg)
+void AreaNavigationROS::distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg)
 {
     monitored_distance_ = msg->data;
 }
 
-void RoomNavigationROS::headingMonitorCallback(const std_msgs::Float32::ConstPtr& msg)
+void AreaNavigationROS::headingMonitorCallback(const std_msgs::Float32::ConstPtr& msg)
 {
     monitored_heading_ = msg->data;
 }
 
-void RoomNavigationROS::resetMonitors()
+void AreaNavigationROS::resetMonitors()
 {
     resetHeadingMonitor();
     resetDistanceMonitor();
 }
 
-void RoomNavigationROS::resetHeadingMonitor()
+void AreaNavigationROS::resetHeadingMonitor()
 {
     robot_heading_monitor::Reset heading_reset_srv;
     heading_reset_srv.request.reset = true;
@@ -325,7 +325,7 @@ void RoomNavigationROS::resetHeadingMonitor()
     }
 }
 
-void RoomNavigationROS::resetDistanceMonitor()
+void AreaNavigationROS::resetDistanceMonitor()
 { 
     robot_distance_monitor::Reset distance_reset_srv;
     distance_reset_srv.request.reset = true;
@@ -340,7 +340,7 @@ void RoomNavigationROS::resetDistanceMonitor()
     }
 }
 
-void RoomNavigationROS::enableHeadingController()
+void AreaNavigationROS::enableHeadingController()
 {
     heading_control::Switch heading_control_switch_service_msg;
     heading_control_switch_service_msg.request.enable = true;
@@ -354,7 +354,7 @@ void RoomNavigationROS::enableHeadingController()
     }
 }
 
-void RoomNavigationROS::disableHeadingController()
+void AreaNavigationROS::disableHeadingController()
 {
     heading_control::Switch heading_control_switch_service_msg;
     heading_control_switch_service_msg.request.enable = false;
@@ -368,7 +368,7 @@ void RoomNavigationROS::disableHeadingController()
     }
 }
 
-void RoomNavigationROS::enableMotionController()
+void AreaNavigationROS::enableMotionController()
 {
     motion_control::Switch motion_control_switch_service_msg;
     motion_control_switch_service_msg.request.enable = true;
@@ -382,7 +382,7 @@ void RoomNavigationROS::enableMotionController()
     }
 }
 
-void RoomNavigationROS::disableMotionController()
+void AreaNavigationROS::disableMotionController()
 {
     motion_control::Switch motion_control_switch_service_msg;
     motion_control_switch_service_msg.request.enable = false;
@@ -396,7 +396,7 @@ void RoomNavigationROS::disableMotionController()
     }
 }
 
-void RoomNavigationROS::setMotionControllerParams(double inflation_radius)
+void AreaNavigationROS::setMotionControllerParams(double inflation_radius)
 {
     motion_control::Params motion_control_params_service_msg;
     motion_control_params_service_msg.request.inflation_radius = inflation_radius;
@@ -410,7 +410,7 @@ void RoomNavigationROS::setMotionControllerParams(double inflation_radius)
     }
 }
 
-void RoomNavigationROS::setMotionControllerDriveMode(int drive_mode)
+void AreaNavigationROS::setMotionControllerDriveMode(int drive_mode)
 {
     motion_control::DriveMode motion_control_drive_mode_service_msg;
     motion_control_drive_mode_service_msg.request.drive_mode = drive_mode;
@@ -424,8 +424,8 @@ void RoomNavigationROS::setMotionControllerDriveMode(int drive_mode)
     }
 }
 
-void RoomNavigationROS::reset()
+void AreaNavigationROS::reset()
 {
-    room_navigation_.reset();
+    area_navigation_.reset();
     resetMonitors();
 }

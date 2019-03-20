@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(room_navigation)
+project(area_navigation)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -27,7 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_action_files(
   DIRECTORY action
   FILES
-  RoomNavigation.action
+  AreaNavigation.action
 )
 
 ## System dependencies are found with CMake's conventions
@@ -60,15 +60,15 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_library(room_navigation src/room_navigation.cpp)
-target_link_libraries(room_navigation ${catkin_LIBRARIES})
+add_library(area_navigation src/area_navigation.cpp)
+target_link_libraries(area_navigation ${catkin_LIBRARIES})
 
-add_library(room_navigation_ros src/room_navigation_ros.cpp)
-target_link_libraries(room_navigation_ros room_navigation ${catkin_LIBRARIES})
-add_dependencies(room_navigation_ros room_navigation_generate_messages_cpp)
+add_library(area_navigation_ros src/area_navigation_ros.cpp)
+target_link_libraries(area_navigation_ros area_navigation ${catkin_LIBRARIES})
+add_dependencies(area_navigation_ros area_navigation_generate_messages_cpp)
 
-add_executable(room_navigation_node src/room_navigation_node.cpp)
-target_link_libraries(room_navigation_node room_navigation_ros ${catkin_LIBRARIES})
+add_executable(area_navigation_node src/area_navigation_node.cpp)
+target_link_libraries(area_navigation_node area_navigation_ros ${catkin_LIBRARIES})
 
 include_directories(include ${catkin_INCLUDE_DIRS})
 include_directories(include ${EIGEN3_INCLUDE_DIRS})

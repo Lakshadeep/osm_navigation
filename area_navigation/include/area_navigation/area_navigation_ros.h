@@ -1,17 +1,17 @@
-#ifndef ROOM_NAVIGATION_ROS_H
-#define ROOM_NAVIGATION_ROS_H
+#ifndef AREA_NAVIGATION_ROS_H
+#define AREA_NAVIGATION_ROS_H
 
 #include <string>
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
-#include <room_navigation/room_navigation.h>
-#include <room_navigation/structs.h>
+#include <area_navigation/area_navigation.h>
+#include <area_navigation/structs.h>
 
 // ROS messages
 #include <gateway_msgs/Gateways.h>
 #include <osm_map_msgs/SemanticMap.h>
 #include <std_msgs/Float32.h>
-#include <room_navigation/RoomNavigationAction.h>
+#include <area_navigation/AreaNavigationAction.h>
 
 // ROS services
 #include <heading_control/Switch.h>
@@ -21,13 +21,13 @@
 #include <motion_control/Params.h>
 #include <motion_control/DriveMode.h>
 
-class RoomNavigationROS
+class AreaNavigationROS
 {
 
 public:
     // Constructor / destructor
-    RoomNavigationROS(ros::NodeHandle&);
-    ~RoomNavigationROS();
+    AreaNavigationROS(ros::NodeHandle&);
+    ~AreaNavigationROS();
     void loadParameters();
 
     void run();
@@ -51,7 +51,7 @@ private:
     ros::ServiceClient motion_control_params_service_client_;
     ros::ServiceClient motion_control_drive_mode_service_client_;
 
-    actionlib::SimpleActionServer<room_navigation::RoomNavigationAction> room_navigation_server_;
+    actionlib::SimpleActionServer<area_navigation::AreaNavigationAction> area_navigation_server_;
 
     // subscriber callbacks
     void gatewayDetectionCallback(const gateway_msgs::Gateways::ConstPtr& msg);
@@ -79,7 +79,7 @@ private:
     bool recovery_enabled_;
 
     // corridor navigation
-    RoomNavigation room_navigation_;
+    AreaNavigation area_navigation_;
 
     // data caching
     
@@ -92,7 +92,7 @@ private:
     double monitored_heading_;
 
     // action server callbacks
-    void RoomNavigationExecute(const room_navigation::RoomNavigationGoalConstPtr& goal);
+    void AreaNavigationExecute(const area_navigation::AreaNavigationGoalConstPtr& goal);
 
     // ROS related helper functions
     void resetMonitors();

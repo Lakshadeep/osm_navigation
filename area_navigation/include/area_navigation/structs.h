@@ -1,5 +1,5 @@
-#ifndef ROOM_NAVIGATION_STRUCTS_H
-#define ROOM_NAVIGATION_STRUCTS_H
+#ifndef AREA_NAVIGATION_STRUCTS_H
+#define AREA_NAVIGATION_STRUCTS_H
 
 #include <vector>
 #include <cmath>
