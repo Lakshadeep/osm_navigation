@@ -53,9 +53,30 @@ double AreaNavigation::computeVelocity(double monitored_distance, double monitor
     return velocity;
 }
 
-void AreaNavigation::setGoal(int goal_type)
+bool AreaNavigation::setGoal(int goal_type, std::vector<NavigationSign> navigation_signs)
 {
-    goal_type_ = goal_type;
+    for (int i = 0; i < navigation_signs.size(); i++)
+    {
+        if (navigation_signs[i].type == goal_type)
+        {
+            goal_type_ = goal_type;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool AreaNavigation::updateGoalNavigationSign(std::vector<NavigationSign> navigation_signs)
+{
+    for (int i = 0; i < navigation_signs.size(); i++)
+    {
+        if (navigation_signs[i].type == goal_type_)
+        {
+            current_navigation_sign_ = navigation_signs[i];
+            return true;
+        }
+    }
+    return false;
 }
 
 void AreaNavigation::reset()

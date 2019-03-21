@@ -3,6 +3,7 @@
 
 #include <string>
 #include <ros/ros.h>
+#include <tf/tf.h>
 #include <actionlib/server/simple_action_server.h>
 #include <area_navigation/area_navigation.h>
 #include <area_navigation/structs.h>
@@ -99,6 +100,7 @@ private:
     void disableMotionController();
     void setMotionControllerParams(double inflation_radius);
     void setMotionControllerDriveMode(int drive_mode);
+    NavigationSign navigationSignROSToNavigationSign(navigation_sign_msgs::NavigationSign nav_sign_ros);
 };
 
 #endif

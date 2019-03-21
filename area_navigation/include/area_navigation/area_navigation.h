@@ -13,7 +13,8 @@ public:
     ~AreaNavigation();
 
     void setNominalVelocity(double nominal_velocity);
-    void setGoal(int goal_type);
+    bool setGoal(int goal_type, std::vector<NavigationSign> navigation_signs);
+    bool updateGoalNavigationSign(std::vector<NavigationSign> navigation_signs);
 
     bool determineDirection(double &computed_direction, double curr_direction, std::vector<NavigationSign> navigation_signs);
     double computeVelocity(double monitored_distance, double monitored_heading);
@@ -38,7 +39,7 @@ private:
 
     int state_;
 
-    std::vector<NavigationSign> current_navigation_sign_;
+    NavigationSign current_navigation_sign_;
 
     
 };

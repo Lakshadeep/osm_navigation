@@ -37,93 +37,102 @@ void AreaNavigationROS::run()
 void AreaNavigationROS::AreaNavigationExecute(const area_navigation::AreaNavigationGoalConstPtr& goal)
 {
     reset();
-    area_navigation_.setGoal(goal->goal_type);
-    ros::Rate r(controller_frequency_);
-
-    std_msgs::Float32 desired_direction_msg;
-    std_msgs::Float32 desired_velocity_msg;
-    area_navigation::AreaNavigationFeedback feedback;
-
-    double desired_orientation;
-
-    enableHeadingController();
-    enableMotionController();
-    setMotionControllerParams(0.5);
-    setMotionControllerDriveMode(2);
-
-    while(nh_.ok())
+    if(area_navigation_.setGoal(goal->goal_type, navigation_signs_))
     {
-        if(area_navigation_server_.isPreemptRequested())
+        ros::Rate r(controller_frequency_);
+
+        std_msgs::Float32 desired_direction_msg;
+        std_msgs::Float32 desired_velocity_msg;
+        area_navigation::AreaNavigationFeedback feedback;
+
+        double desired_orientation;
+
+        enableHeadingController();
+        enableMotionController();
+        setMotionControllerParams(0.5);
+        setMotionControllerDriveMode(2);
+
+        while(nh_.ok())
         {
-            reset();
-            disableHeadingController();
-            disableMotionController();
-            //notify the ActionServer that we've successfully preempted
-            ROS_DEBUG_NAMED("area_navigation", "Area navigation preempting the current goal");
-            area_navigation_server_.setPreempted();
-
-            return;
-        }
-        else
-        {
-            feedback.remaining_distance = monitored_distance_;
-            feedback.current_direction = monitored_heading_;
-
-            /**
-            Area navigation state machine
-            --------------------------
-            State -1: turn to desired direction
-            State 0: travel desired distance
-            State 1: success
-            **/
-
-            if(area_navigation_.getState() == -1)
+            area_navigation_.updateGoalNavigationSign(navigation_signs_);
+            if(area_navigation_server_.isPreemptRequested())
             {
-                desired_direction_msg.data = 0;
-                desired_velocity_msg.data = area_navigation_.getNominalVelocity();
+                reset();
+                disableHeadingController();
+                disableMotionController();
+                //notify the ActionServer that we've successfully preempted
+                ROS_DEBUG_NAMED("area_navigation", "Area navigation preempting the current goal");
+                area_navigation_server_.setPreempted();
 
-                if(area_navigation_.isStateChanged(monitored_distance_, monitored_heading_, navigation_signs_))
-                {
-                    resetHeadingMonitor();
-                    resetDistanceMonitor();
-                    setMotionControllerDriveMode(1);
-                }
+                return;
             }
-            else if (area_navigation_.getState() == 0)
+            else
             {
-                
-                if (area_navigation_.determineDirection(desired_orientation, monitored_heading_, navigation_signs_))
-                    desired_direction_msg.data = desired_orientation;
-                else
+                feedback.remaining_distance = monitored_distance_;
+                feedback.current_direction = monitored_heading_;
+
+                /**
+                Area navigation state machine
+                --------------------------
+                State -1: turn to desired direction
+                State 0: travel desired distance
+                State 1: success
+                **/
+
+                if(area_navigation_.getState() == -1)
+                {
                     desired_direction_msg.data = 0;
+                    desired_velocity_msg.data = area_navigation_.getNominalVelocity();
 
-                desired_velocity_msg.data = area_navigation_.getNominalVelocity();
-
-                if(area_navigation_.isStateChanged(monitored_distance_, monitored_heading_, navigation_signs_))
-                {
-                    setMotionControllerDriveMode(0);
-                    setMotionControllerParams(0.7);
-                    disableHeadingController();
-                    disableMotionController();
-                    
-                    reset();
-
-                    area_navigation_server_.setSucceeded(area_navigation::AreaNavigationResult(), "Goal reached");
-                    return;
+                    if(area_navigation_.isStateChanged(monitored_distance_, monitored_heading_, navigation_signs_))
+                    {
+                        resetHeadingMonitor();
+                        resetDistanceMonitor();
+                        setMotionControllerDriveMode(1);
+                    }
                 }
+                else if (area_navigation_.getState() == 0)
+                {
+                    
+                    if (area_navigation_.determineDirection(desired_orientation, monitored_heading_, navigation_signs_))
+                        desired_direction_msg.data = desired_orientation;
+                    else
+                        desired_direction_msg.data = 0;
+
+                    desired_velocity_msg.data = area_navigation_.getNominalVelocity();
+
+                    if(area_navigation_.isStateChanged(monitored_distance_, monitored_heading_, navigation_signs_))
+                    {
+                        setMotionControllerDriveMode(0);
+                        setMotionControllerParams(0.7);
+                        disableHeadingController();
+                        disableMotionController();
+                        
+                        reset();
+
+                        area_navigation_server_.setSucceeded(area_navigation::AreaNavigationResult(), "Goal reached");
+                        return;
+                    }
+                }
+                
+                desired_heading_publisher_.publish(desired_direction_msg);
+                desired_velocity_publisher_.publish(desired_velocity_msg);
+
+
             }
-            
-            desired_heading_publisher_.publish(desired_direction_msg);
-            desired_velocity_publisher_.publish(desired_velocity_msg);
+            feedback.desired_direction = desired_orientation;
+            feedback.state = area_navigation_.getState();
+            area_navigation_server_.publishFeedback(feedback);  
 
-
+            r.sleep();
         }
-        feedback.desired_direction = desired_orientation;
-        feedback.state = area_navigation_.getState();
-        area_navigation_server_.publishFeedback(feedback);  
-
-        r.sleep();
     }
+    else
+    {
+        area_navigation_server_.setAborted(area_navigation::AreaNavigationResult(), "No navigation sign detected");
+        return;
+    }
+    
 }
 
 void AreaNavigationROS::loadParameters()
@@ -200,7 +209,33 @@ void AreaNavigationROS::loadParameters()
 
 void AreaNavigationROS::navigationSignsCallback(const navigation_sign_msgs::NavigationSigns::ConstPtr& msg)
 {
-    
+    navigation_signs_.clear();
+    for (int i = 0; i < msg->navigation_signs.size(); i++)
+    {
+        navigation_signs_.push_back(navigationSignROSToNavigationSign(msg->navigation_signs[i]));
+    }
+}
+
+NavigationSign AreaNavigationROS::navigationSignROSToNavigationSign(navigation_sign_msgs::NavigationSign nav_sign_ros)
+{ 
+    NavigationSign nav_sign;
+    nav_sign.direction = nav_sign_ros.direction;
+    nav_sign.type = nav_sign_ros.type;
+
+    nav_sign.position.x = nav_sign_ros.pose.position.x;
+    nav_sign.position.y = nav_sign_ros.pose.position.y;
+    nav_sign.position.z = nav_sign_ros.pose.position.z;
+
+    tf::Quaternion quat;
+    tf::quaternionMsgToTF(nav_sign_ros.pose.orientation, quat);
+    double roll, pitch, yaw;
+    tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+
+    nav_sign.orientation.roll = roll;
+    nav_sign.orientation.pitch = pitch;
+    nav_sign.orientation.yaw = yaw;
+
+    return nav_sign;
 }
 
 void AreaNavigationROS::distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg)
