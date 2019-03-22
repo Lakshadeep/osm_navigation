@@ -81,7 +81,7 @@ bool AreaNavigation::updateGoalNavigationSign(std::vector<NavigationSign> naviga
 
 void AreaNavigation::reset()
 {
-    desired_direction_ = 1;
+    desired_direction_ = 0;
     desired_distance_ = 0;
     goal_type_ = -1;
     state_ = -1;
@@ -91,22 +91,36 @@ bool AreaNavigation::isStateChanged(double monitored_distance, double monitored_
 {
     if (state_ == -1)
     {
-        state_ = 0;
-        return true;
+        desired_direction_ = current_navigation_sign_.orientation.pitch;
+        desired_distance_ = current_navigation_sign_.position.z;
     }
-    else if(state_ == -1) 
+    else if (state_ == 0)
+    {
+        desired_direction_ = - (M_PI/2.0 - atan2(current_navigation_sign_.position.z, current_navigation_sign_.position.x));
+        desired_distance_ = current_navigation_sign_.position.z;
+    }
+    else if (state_ == 1)
+    {
+        if (current_navigation_sign_.direction == 0)
+            desired_direction_ = M_PI/2.0 + current_navigation_sign_.orientation.pitch;
+        else if (current_navigation_sign_.direction == 2)
+            desired_direction_ = -M_PI/2.0 + current_navigation_sign_.orientation.pitch;
+        desired_distance_ = 0;
+    }
+    
+    if (state_ == -1 && fabs(monitored_heading - desired_direction_) < 0.02)
     {
         state_ = 0;
         return true;
     }
-    else if(state_ == -1) 
-    {
-        state_ = 0;
-        return true;
-    }
-    else if(state_ == 0)
+    else if(state_ == 0 && fabs(monitored_distance - desired_distance_) < 0.75) // distance should be greater then clearance radius
     {
         state_ = 1;
+        return true;
+    }
+    else if(state_ == 1 && fabs(monitored_heading - desired_direction_) < 0.02)
+    {
+        state_ = 2;
         return true;
     }
     return false;

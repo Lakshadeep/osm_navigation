@@ -54,7 +54,6 @@ void AreaNavigationROS::AreaNavigationExecute(const area_navigation::AreaNavigat
 
         while(nh_.ok())
         {
-            area_navigation_.updateGoalNavigationSign(navigation_signs_);
             if(area_navigation_server_.isPreemptRequested())
             {
                 reset();
@@ -68,20 +67,20 @@ void AreaNavigationROS::AreaNavigationExecute(const area_navigation::AreaNavigat
             }
             else
             {
-                feedback.remaining_distance = monitored_distance_;
-                feedback.current_direction = monitored_heading_;
-
                 /**
                 Area navigation state machine
                 --------------------------
-                State -1: turn to desired direction
-                State 0: travel desired distance
-                State 1: success
+                State -1: align w.r.t detected feature
+                State 0: move towards detected feature
+                State 1: perform desired turn
                 **/
 
                 if(area_navigation_.getState() == -1)
                 {
-                    desired_direction_msg.data = 0;
+                    if(area_navigation_.updateGoalNavigationSign(navigation_signs_))
+                        resetHeadingMonitor();
+
+                    desired_direction_msg.data = area_navigation_.getDesiredDirection();
                     desired_velocity_msg.data = area_navigation_.getNominalVelocity();
 
                     if(area_navigation_.isStateChanged(monitored_distance_, monitored_heading_, navigation_signs_))
@@ -93,20 +92,38 @@ void AreaNavigationROS::AreaNavigationExecute(const area_navigation::AreaNavigat
                 }
                 else if (area_navigation_.getState() == 0)
                 {
+                    if(area_navigation_.updateGoalNavigationSign(navigation_signs_))
+                    {
+                        resetHeadingMonitor();
+                        resetDistanceMonitor();
+                    }
                     
-                    if (area_navigation_.determineDirection(desired_orientation, monitored_heading_, navigation_signs_))
-                        desired_direction_msg.data = desired_orientation;
-                    else
-                        desired_direction_msg.data = 0;
-
+                    desired_direction_msg.data = area_navigation_.getDesiredDirection();
                     desired_velocity_msg.data = area_navigation_.getNominalVelocity();
 
                     if(area_navigation_.isStateChanged(monitored_distance_, monitored_heading_, navigation_signs_))
                     {
-                        setMotionControllerDriveMode(0);
-                        setMotionControllerParams(0.7);
+                        resetHeadingMonitor();
+                        resetDistanceMonitor();
+                        setMotionControllerDriveMode(2);
+                    }
+                }
+                else if (area_navigation_.getState() == 1)
+                {
+                    // NOTE:
+                    // for this state we don't reset heading & distance mainly because most of the time feature is invisible
+
+                    desired_direction_msg.data = area_navigation_.getDesiredDirection();
+                    desired_velocity_msg.data = area_navigation_.getNominalVelocity();
+
+                    if(area_navigation_.isStateChanged(monitored_distance_, monitored_heading_, navigation_signs_))
+                    {
+                        resetHeadingMonitor();
+                        resetDistanceMonitor();
                         disableHeadingController();
                         disableMotionController();
+                        setMotionControllerParams(0.7);
+                        setMotionControllerDriveMode(0);
                         
                         reset();
 
@@ -114,25 +131,24 @@ void AreaNavigationROS::AreaNavigationExecute(const area_navigation::AreaNavigat
                         return;
                     }
                 }
-                
                 desired_heading_publisher_.publish(desired_direction_msg);
                 desired_velocity_publisher_.publish(desired_velocity_msg);
-
-
             }
-            feedback.desired_direction = desired_orientation;
+
+            feedback.remaining_distance = -1;
+            feedback.current_direction = monitored_heading_;
+            feedback.desired_direction = desired_direction_msg.data;
             feedback.state = area_navigation_.getState();
             area_navigation_server_.publishFeedback(feedback);  
-
             r.sleep();
         }
     }
     else
     {
+        ROS_ERROR("No navigation sign detected");
         area_navigation_server_.setAborted(area_navigation::AreaNavigationResult(), "No navigation sign detected");
         return;
     }
-    
 }
 
 void AreaNavigationROS::loadParameters()
@@ -232,7 +248,7 @@ NavigationSign AreaNavigationROS::navigationSignROSToNavigationSign(navigation_s
     tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
 
     nav_sign.orientation.roll = roll;
-    nav_sign.orientation.pitch = pitch;
+    nav_sign.orientation.pitch = -pitch;
     nav_sign.orientation.yaw = yaw;
 
     return nav_sign;
