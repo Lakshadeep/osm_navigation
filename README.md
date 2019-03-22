@@ -185,5 +185,35 @@ turn_direction: 0/1/2    (left/front/right)
 distance: 0.0
 ```
 
+## Area navigation
+Navigating using a traffic/navigation sign
+
+#### Subscribed topics
+* navigation signs
+* distance monitor
+* heading monitor
+
+#### Published topics
+* desired heading
+* desirred velocity 
+
+#### Required services
+* heading control switch
+* motion control switch
+* heading monitor reset
+* distance monitor reset
+* motion control params
+* motion control drive mode
+
+#### Launch
+`roslaunch area_navigation area_navigation.launch`
+
+#### Tests
+```
+rosrun actionlib axclient.py  "/area_navigation_server" area_navigation/AreaNavigationAction
+
+goal_type: 0    (0 - exit)
+```
+
 
 

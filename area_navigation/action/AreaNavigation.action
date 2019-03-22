@@ -1,0 +1,9 @@
+# 0 : exit
+
+int32 goal_type
+---
+---
+float32 remaining_distance
+float32 current_direction
+float32 desired_direction
+int32 state
