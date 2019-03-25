@@ -247,6 +247,7 @@ NavigationSign AreaNavigationROS::navigationSignROSToNavigationSign(navigation_s
     double roll, pitch, yaw;
     tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
 
+    // Sign conversion should possibly not happen here
     nav_sign.orientation.roll = roll;
     nav_sign.orientation.pitch = -pitch;
     nav_sign.orientation.yaw = yaw;

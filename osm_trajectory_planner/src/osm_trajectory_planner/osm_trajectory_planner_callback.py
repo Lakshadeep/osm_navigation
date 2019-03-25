@@ -4,6 +4,7 @@ import math
 from geometry_msgs.msg import Pose, Point, Quaternion
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
+
 class OSMTrajectoryPlannerCallback(object):
 
     """callback for wm query server"""
@@ -36,17 +37,20 @@ class OSMTrajectoryPlannerCallback(object):
         path = []
 
         if start_local_area and destination_local_area:
-            path = self.path_planner.get_path_plan(start_floor=start_floor, destination_floor=destination_floor,start_area=start_area,destination_area=destination_area, start_local_area=start_local_area,destination_local_area=destination_local_area)
+            path = self.path_planner.get_path_plan(start_floor=start_floor, destination_floor=destination_floor, start_area=start_area,
+                                                   destination_area=destination_area, start_local_area=start_local_area, destination_local_area=destination_local_area)
         elif start_local_area and destination_task:
-            path = self.path_planner.get_path_plan(start_floor=start_floor, destination_floor=destination_floor,start_area=start_area,destination_area=destination_area, start_local_area=start_local_area,destination_task=destination_task)
+            path = self.path_planner.get_path_plan(start_floor=start_floor, destination_floor=destination_floor, start_area=start_area,
+                                                   destination_area=destination_area, start_local_area=start_local_area, destination_task=destination_task)
         elif start_position and destination_task:
-            path = self.path_planner.get_path_plan(start_floor=start_floor, destination_floor=destination_floor,start_area=start_area,destination_area=destination_area, robot_position=start_position,destination_task=destination_task)
+            path = self.path_planner.get_path_plan(start_floor=start_floor, destination_floor=destination_floor, start_area=start_area,
+                                                   destination_area=destination_area, robot_position=start_position, destination_task=destination_task)
         elif start_position and destination_local_area:
-            path = self.path_planner.get_path_plan(start_floor=start_floor, destination_floor=destination_floor,start_area=start_area,destination_area=destination_area, robot_position=start_position,destination_local_area=destination_local_area)
+            path = self.path_planner.get_path_plan(start_floor=start_floor, destination_floor=destination_floor, start_area=start_area,
+                                                   destination_area=destination_area, robot_position=start_position, destination_local_area=destination_local_area)
         else:
             rospy.logerr("Path planner need more arguments to plan the path")
-  
-        
+
         extracted_path = []
         for area in path:
             a = Area()
@@ -71,7 +75,7 @@ class OSMTrajectoryPlannerCallback(object):
     def _plan_route(self, path):
         is_first_pt = True
 
-        last_pt = [0,0]
+        last_pt = [0, 0]
         last_orientation = 0
 
         res = OSMTrajectoryPlannerResult()
@@ -83,27 +87,31 @@ class OSMTrajectoryPlannerCallback(object):
                     temp = self.osm_bridge.get_local_area(pt.id)
                 elif pt.type == 'door':
                     temp = self.osm_bridge.get_local_area(pt.id)
-                
+
                 if temp is not None:
                     topology_node = temp.topology
                     if is_first_pt:
                         is_first_pt = False
                     else:
-                        last_orientation = math.atan2(topology_node.y - last_pt[1], topology_node.x - last_pt[0])
+                        last_orientation = math.atan2(
+                            topology_node.y - last_pt[1], topology_node.x - last_pt[0])
                         p = Pose()
-                        p.position = Point(x=last_pt[0],y=last_pt[1],z=0)
-                        p.orientation = Quaternion(*quaternion_from_euler(0,0,last_orientation))
-                        if j > 0:      
-                            area.waypoints[j-1].waypoint_pose = p
+                        p.position = Point(x=last_pt[0], y=last_pt[1], z=0)
+                        p.orientation = Quaternion(
+                            *quaternion_from_euler(0, 0, last_orientation))
+                        if j > 0:
+                            area.waypoints[j - 1].waypoint_pose = p
                         else:
-                            path[i-1].waypoints[len(path[i-1].waypoints) -1].waypoint_pose = p
+                            path[
+                                i - 1].waypoints[len(path[i - 1].waypoints) - 1].waypoint_pose = p
                         # print(last_pt[0], last_pt[1], last_orientation*180/3.1457)
                     last_pt = [topology_node.x, topology_node.y]
         p = Pose()
-        p.position = Point(x=last_pt[0],y=last_pt[1],z=0)
-        p.orientation = Quaternion(*quaternion_from_euler(0,0,last_orientation))
-        path[len(path)-1].waypoints[len(path[len(path)-1].waypoints) -1].waypoint_pose = p
+        p.position = Point(x=last_pt[0], y=last_pt[1], z=0)
+        p.orientation = Quaternion(
+            *quaternion_from_euler(0, 0, last_orientation))
+        path[len(path) - 1].waypoints[len(path[len(path) -
+                                               1].waypoints) - 1].waypoint_pose = p
 
         res.areas = path
         return res
-
