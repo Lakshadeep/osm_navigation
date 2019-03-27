@@ -1,7 +1,14 @@
 <?xml version="1.0"?>
 <launch>
+    <node name="osm_trajectory_planner_node" pkg="osm_trajectory_planner" type="osm_trajectory_planner_node.py" output="screen">
+        <param name="overpass_server_ip" value="192.168.22.121" />
+        <param name="overpass_server_port" value="8000" />
+        <param name="ref_latitude" value="50.7800401" />  <!-- same ref latitude should be used here and for map generation -->
+        <param name="ref_longitude" value="7.18226" />  <!-- same ref longitude should be used here and for map generation -->
+        <param name="building" value="BRSU" />
+    </node>
     <node name="osm_topological_planner_node" pkg="osm_topological_planner" type="osm_topological_planner_node.py" output="screen">
-        <param name="overpass_server_ip" value="172.16.1.101" />
+        <param name="overpass_server_ip" value="192.168.22.121" />
         <param name="overpass_server_port" value="8000" />
         <param name="ref_latitude" value="50.7800401" />  
         <param name="ref_longitude" value="7.18226" /> 
