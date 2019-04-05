@@ -36,7 +36,20 @@ class OSMTopologicalPlannerCallback(object):
         c_euler = euler_from_quaternion([curr_wp.waypoint_pose.orientation.x, curr_wp.waypoint_pose.orientation.y,
                                          curr_wp.waypoint_pose.orientation.z, curr_wp.waypoint_pose.orientation.w])
         angle = self._wrap_to_pi(c_euler[2] - p_euler[2])
-        print(angle * 180 / 3.1457)
+        return angle
+
+    def _compute_junction_angle(self, prev_wp, curr_wp, junction_wp):
+        angle = math.atan2(curr_wp.waypoint_pose.position.y - junction_wp.waypoint_pose.position.y,
+                           curr_wp.waypoint_pose.position.x - junction_wp.waypoint_pose.position.x)
+        p_euler = euler_from_quaternion([prev_wp.waypoint_pose.orientation.x, prev_wp.waypoint_pose.orientation.y,
+                                         prev_wp.waypoint_pose.orientation.z, prev_wp.waypoint_pose.orientation.w])
+        angle = self._wrap_to_pi(angle - p_euler[2])
+        return angle
+
+    def _compute_door_angle(self, prev_wp, curr_wp):
+        angle = math.atan2(curr_wp.waypoint_pose.position.y - prev_wp.waypoint_pose.position.y,
+                           curr_wp.waypoint_pose.position.x - prev_wp.waypoint_pose.position.x)
+        angle = self._wrap_to_pi(angle)
         return angle
 
     def _wrap_to_pi(self, angle):
@@ -73,11 +86,12 @@ class OSMTopologicalPlannerCallback(object):
         last_area_type = ''
         last_waypoint = Waypoint(waypoint_pose=Pose(
             position=Point(0, 0, 0), orientation=Quaternion(0, 0, 0, 1)))
+        junction_waypoint = Waypoint(waypoint_pose=Pose(
+            position=Point(0, 0, 0), orientation=Quaternion(0, 0, 0, 1)))
+        last_direction = 0
+        combine = False
 
         for area in areas:
-
-            goal_direction = 0
-            combine = False
 
             if last_area_type == area.type and area.type == "corridor":
                 topological_actions[
@@ -93,9 +107,9 @@ class OSMTopologicalPlannerCallback(object):
                             len(topological_actions) - 1].navigation_skill_type = 'hallway_navigation'
                         angle = self._compute_angle(last_waypoint, exit_wp)
                         topological_actions[
-                            len(topological_actions) - 1].goal_direction = self._angle_to_direction(angle)
-                        last_waypoint = exit_wp
-
+                            len(topological_actions) - 1].goal_direction = self._angle_to_direction(angle - last_direction)
+                    last_waypoint = exit_wp
+                    last_direction = angle
                 combine = True
             elif last_area_type == 'corridor' and area.type == 'junction':
                 topological_actions[
@@ -112,46 +126,76 @@ class OSMTopologicalPlannerCallback(object):
                 topological_actions[
                     len(topological_actions) - 1].navigation_skill_type = 'junction_maneuvering'
 
-                exit_wp = area.waypoints[len(area.waypoints) - 1]
-                angle = self._compute_angle(last_waypoint, exit_wp)
+                exit_wp = area.waypoints[0]
+                angle = self._compute_junction_angle(
+                    last_waypoint, exit_wp, junction_waypoint)
                 topological_actions[
                     len(topological_actions) - 1].goal_direction = self._angle_to_direction(angle)
                 last_waypoint = exit_wp
+                last_direction = 0
+            elif last_area_type == area.type and area.type == "area":
+                topological_actions[
+                    len(topological_actions) - 1].area_ids.append(area.id)
+                if len(area.waypoints) > 0:
+                    exit_wp = area.waypoints[len(area.waypoints) - 1]
+                    if exit_wp.type == 'door':
+                        topological_actions[len(
+                            topological_actions) - 1].goal_id = area.waypoints[len(area.waypoints) - 1].id
+                        topological_actions[
+                            len(topological_actions) - 1].goal_type = 'door'
+                        topological_actions[
+                            len(topological_actions) - 1].navigation_skill_type = 'area_navigation'
+                        topological_actions[
+                            len(topological_actions) - 1].goal_direction = 1
+                combine = True
 
-            if last_area_type == 'room' and area.type == 'corridor':
+            if (last_area_type == 'room' or last_area_type == 'area') and area.type == 'corridor':
                 if len(area.waypoints) > 0:
                     exit_wp = area.waypoints[0]
                     angle = self._compute_angle(last_waypoint, exit_wp)
                     topological_actions[
-                        len(topological_actions) - 1].goal_direction = self._angle_to_direction(angle)
+                        len(topological_actions) - 1].goal_direction = self._angle_to_direction(angle - last_direction)
                     last_waypoint = area.waypoints[len(area.waypoints) - 1]
+                    last_direction = angle
 
-            # TODO : Corridor -> room
+            # Note: this is based on assumption that we have navigation signs
+            # in rooms/areas to navigate
+            if area.type == 'corridor' and (last_area_type == 'room' or last_area_type == 'area'):
+                if len(area.waypoints) > 2:
+                    exit_wp1 = area.waypoints[len(area.waypoints) - 2]
+                    exit_wp2 = area.waypoints[len(area.waypoints) - 1]
+                    angle = self._compute_angle(exit_wp1, exit_wp2)
+                    topological_actions[
+                        len(topological_actions) - 1].goal_direction = self._angle_to_direction(angle - last_direction)
+                    last_waypoint = exit_wp2
+                    last_direction = angle
 
             if not combine:
                 ta = TopologicalAction()
                 ta.area_ids.append(area.id)
                 ta.type = area.type
-                if len(area.waypoints) > 0 and area.type == 'room':
+                if area.type == 'room' or area.type == 'area':
                     exit_wp = area.waypoints[len(area.waypoints) - 1]
                     if exit_wp.type == 'door':
                         ta.goal_id = area.waypoints[
                             len(area.waypoints) - 1].id
                         ta.goal_type = 'door'
-                        ta.navigation_skill_type = 'area_navigation'
-
+                    ta.navigation_skill_type = 'area_navigation'
+                    ta.goal_direction = 1
                     last_waypoint = exit_wp
                 elif area.type == 'corridor':
                     ta.goal_id = area.id
                     ta.goal_type = ''
                     ta.navigation_skill_type = 'hallway_navigation'
-                    ta.goal_direction = goal_direction
+                    ta.goal_direction = 1
                     last_waypoint = area.waypoints[len(area.waypoints) - 1]
                 elif area.type == 'junction':
                     ta.goal_id = area.id
                     ta.goal_type = ''
                     ta.navigation_skill_type = 'junction_maneuvering'
-                    ta.goal_direction = goal_direction
+                    ta.goal_direction = 1
+                    junction_waypoint = area.waypoints[0]
+
                 topological_actions.append(ta)
 
             last_area_type = area.type
