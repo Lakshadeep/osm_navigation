@@ -21,16 +21,16 @@ class TestComputeOrientation(unittest.TestCase):
     def tearDown(self):
         pass
 
-    # def test_compute_center(self):
-    #     corridor = self.osm_bridge.get_corridor('BRSU_C_L0_C9')
-    #     pt = self.compute_orientation._compute_center(corridor.geometry.points)
-    #     print(pt)
+    def test_compute_center(self):
+        corridor = self.osm_bridge.get_corridor('BRSU_C_L0_C9')
+        pt = self.compute_orientation._compute_center(corridor.geometry.points)
+        print(pt)
 
-    # def test_get_nearest_points(self):
-    #     prev_area = self.osm_bridge.get_corridor('BRSU_C_L0_C5')
-    #     curr_area = self.osm_bridge.get_corridor('BRSU_C_L0_C6')
-    #     pts = self.compute_orientation._get_nearest_points(prev_area, curr_area)
-    #     print(pts)
+    def test_get_nearest_points(self):
+        prev_area = self.osm_bridge.get_corridor('BRSU_C_L0_C5')
+        curr_area = self.osm_bridge.get_corridor('BRSU_C_L0_C6')
+        pts = self.compute_orientation._get_nearest_points(prev_area, curr_area)
+        print(pts)
 
     def test_compute_corridor_orientation(self):
         prev_area = self.osm_bridge.get_corridor('BRSU_C_L0_C5')
@@ -38,6 +38,19 @@ class TestComputeOrientation(unittest.TestCase):
         next_area = self.osm_bridge.get_corridor('BRSU_C_L0_C7')
         angle = self.compute_orientation.get_corridor_orientation(prev_area, curr_area, next_area)
         print(angle)
+
+    def test_get_door_points(self):
+        door = self.osm_bridge.get_door('BRSU_C_L0_RoomC022_Door1')
+        pts = self.compute_orientation._get_door_points(door.geometry.points)
+        print(pts)
+
+    def test_get_door_orientation(self):
+        door = self.osm_bridge.get_door('BRSU_C_L0_RoomC022_Door1')
+        corridor = self.osm_bridge.get_corridor('BRSU_C_L0_C9')
+        angle = self.compute_orientation.get_door_orientation(door, corridor)
+        print(angle)
+
+
 
 
 
