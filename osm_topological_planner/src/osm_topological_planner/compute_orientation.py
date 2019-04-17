@@ -14,17 +14,19 @@ class ComputeOrientation(object):
         door_points = self._get_door_points(door.geometry.points)
         door_center = self._compute_center(door.geometry.points)
         next_area_center = self._compute_center(next_area.geometry.points)
-        door_angle = math.atan2(door_points[1].y - door_points[0].y, door_points[1].x - door_points[0].x)
-        door_angle1 = self._wrap_to_pi(door_angle+math.pi/2)
-        door_angle2 = self._wrap_to_pi(door_angle-math.pi/2)
-        door_area_angle = math.atan2(next_area_center.y - door_center.y, next_area_center.x - door_center.x)
-        if(math.fabs(door_angle - door_angle1) > math.fabs(door_angle - door_angle2)):
+        door_angle = math.atan2(
+            door_points[1].y - door_points[0].y, door_points[1].x - door_points[0].x)
+        door_angle1 = self._wrap_to_pi(door_angle + math.pi / 2)
+        door_angle2 = self._wrap_to_pi(door_angle - math.pi / 2)
+        door_area_angle = math.atan2(
+            next_area_center.y - door_center.y, next_area_center.x - door_center.x)
+        if(math.fabs(self._wrap_to_pi(door_area_angle - door_angle1)) < math.fabs(self._wrap_to_pi(door_area_angle - door_angle2))):
             return door_angle1
         else:
             return door_angle2
 
     def _wrap_to_pi(self, angle):
-        angle = (angle + math.pi) % (2*math.pi) - math.pi
+        angle = (angle + math.pi) % (2 * math.pi) - math.pi
         return angle
 
     def _get_door_points(self, door_geometry_points):
@@ -44,7 +46,7 @@ class ComputeOrientation(object):
     def get_junction_orientation(self, junction, next_area):
         junction_center = self._compute_center(junction.geometry.points)
         next_area_center = self._compute_center(next_area.geometry.points)
-        return math.atan2(next_area_center.y - door_center.y, next_area_center.x - door_center.x)
+        return math.atan2(next_area_center.y - junction_center.y, next_area_center.x - junction_center.x)
 
     def get_corridor_orientation(self, prev_area, curr_area, next_area):
         entry_pts = self._get_nearest_points(prev_area, curr_area)
