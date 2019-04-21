@@ -14,14 +14,16 @@ class OSMTopologicalPlannerCallback(object):
         self.compute_orientation = ComputeOrientation()
 
     def get_safe_response(self, req):
-        # try:
-        #     res = self._get_response(req)
-        #     return res
-        # except Exception as e:
-        #     rospy.logerr(str(e))
-        #     return None
-        res = self._get_response(req)
+        try:
+            res = self._get_response(req)
+            return res
+        except Exception as e:
+            rospy.logerr(str(e))
+            return None
         return res
+
+    def _compute_distance(self, pt1, pt2):
+        return math.sqrt(math.pow(pt1.x - pt2.x, 2) + math.pow(pt1.y - pt2.y, 2))
 
     def _angle_to_direction(self, orientation, last_orientation):
         angle = self._wrap_to_pi(orientation - last_orientation)
@@ -78,6 +80,7 @@ class OSMTopologicalPlannerCallback(object):
     def _generate_topological_action_plan(self, areas):
         topological_actions = []
         last_orientation = 0
+        last_pt = None
         last_area_type = ''
         combine = False
 
@@ -105,6 +108,9 @@ class OSMTopologicalPlannerCallback(object):
                     last_orientation = self.compute_orientation.get_door_orientation(
                         area.exit_door, areas[i + 1])
                     last_area_type = 'door'
+                    ta.goal_distance = self._compute_distance(area.exit_door.topology, areas[
+                                                              i + 1].local_areas[0].topology)
+                    last_pt = areas[i + 1].local_areas[0].topology
                 else:
                     rospy.logerr(
                         "Robot must start in a room to localize itself")
@@ -151,41 +157,43 @@ class OSMTopologicalPlannerCallback(object):
                         else:
                             orientation = self.compute_orientation.get_corridor_orientation(
                                 areas[i - 1], area, areas[i + 1])
-                            ta.goal_direction = self._angle_to_direction(
+                            ta.goal_direction=self._angle_to_direction(
                                 orientation, last_orientation)
-                            last_orientation = orientation
+                            last_orientation=orientation
 
-                        ta.navigation_skill_type = 'area_navigation'
+                        ta.navigation_skill_type='area_navigation'
+                        last_pt = areas[i + 1].local_areas[0].topology
                     elif area.type == 'corridor':
-                        ta.goal_id = area.id
-                        ta.goal_type = ''
-                        ta.navigation_skill_type = 'hallway_navigation'
+                        ta.goal_id=area.id
+                        ta.goal_type=''
+                        ta.navigation_skill_type='hallway_navigation'
                         if last_area_type == 'door':
-                            orientation = self.compute_orientation.get_corridor_orientation(
+                            orientation=self.compute_orientation.get_corridor_orientation(
                                 last_orientation, area, areas[i + 1])
-                            ta.goal_direction = self._angle_to_direction(
+                            ta.goal_direction=self._angle_to_direction(
                                 orientation, last_orientation)
-                            last_orientation = orientation
+                            last_orientation=orientation
                         else:
-                            orientation = self.compute_orientation.get_corridor_orientation(
+                            orientation=self.compute_orientation.get_corridor_orientation(
                                 areas[i - 1], area, areas[i + 1])
-                            ta.goal_direction = self._angle_to_direction(
+                            ta.goal_direction=self._angle_to_direction(
                                 orientation, last_orientation)
-                            last_orientation = orientation
+                            last_orientation=orientation
 
                     elif area.type == 'junction':
-                        ta.goal_id = area.id
-                        ta.goal_type = ''
-                        ta.navigation_skill_type = 'junction_maneuvering'
-                        orientation = self.compute_orientation.get_junction_orientation(area, areas[
+                        ta.goal_id=area.id
+                        ta.goal_type=''
+                        ta.navigation_skill_type='junction_maneuvering'
+                        orientation=self.compute_orientation.get_junction_orientation(area, areas[
                                                                                         i + 1])
-                        ta.goal_direction = self._angle_to_direction(
+                        ta.goal_direction=self._angle_to_direction(
                             orientation, last_orientation)
-                        last_orientation = orientation
+                        last_orientation=orientation
+                        last_pt = area.topology
                     topological_actions.append(ta)
 
-                last_area_type = area.type
-                combine = False
+                last_area_type=area.type
+                combine=False
             print(last_area_type)
 
         return topological_actions
