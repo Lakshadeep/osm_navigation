@@ -25,6 +25,11 @@ class OSMTopologicalPlannerCallback(object):
     def _compute_distance(self, pt1, pt2):
         return math.sqrt(math.pow(pt1.x - pt2.x, 2) + math.pow(pt1.y - pt2.y, 2))
 
+    # converts angle to direction
+    # 0 - right
+    # 2 -left
+    # 1 - right
+    # 3 - reverse
     def _angle_to_direction(self, orientation, last_orientation):
         angle = self._wrap_to_pi(orientation - last_orientation)
         if angle > (-math.pi / 4) and angle < (math.pi / 4):
@@ -34,7 +39,7 @@ class OSMTopologicalPlannerCallback(object):
         elif angle > (math.pi / 4) and angle < (3 * math.pi / 4):
             return 2
         else:
-            return 4
+            return 3
 
     def _wrap_to_pi(self, angle):
         angle = math.fmod(angle, 2 * math.pi)
@@ -44,6 +49,8 @@ class OSMTopologicalPlannerCallback(object):
             angle += 2 * math.pi
         return angle
 
+    # uses A* based path planner provided by OBL and generates symbolic plan
+    # out out it
     def _get_response(self, req):
         result = OSMTopologicalPlannerResult()
 
@@ -57,19 +64,34 @@ class OSMTopologicalPlannerCallback(object):
         destination_task = req.destination_task
 
         path = []
-
         if start_local_area and destination_local_area:
-            path = self.path_planner.get_path_plan(start_floor=start_floor, destination_floor=destination_floor, start_area=start_area,
-                                                   destination_area=destination_area, start_local_area=start_local_area, destination_local_area=destination_local_area)
+            path = self.path_planner.get_path_plan(start_floor=start_floor,
+                                                   destination_floor=destination_floor,
+                                                   start_area=start_area,
+                                                   destination_area=destination_area,
+                                                   start_local_area=start_local_area,
+                                                   destination_local_area=destination_local_area)
         elif start_local_area and destination_task:
-            path = self.path_planner.get_path_plan(start_floor=start_floor, destination_floor=destination_floor, start_area=start_area,
-                                                   destination_area=destination_area, start_local_area=start_local_area, destination_task=destination_task)
+            path = self.path_planner.get_path_plan(start_floor=start_floor,
+                                                   destination_floor=destination_floor,
+                                                   start_area=start_area,
+                                                   destination_area=destination_area,
+                                                   start_local_area=start_local_area,
+                                                   destination_task=destination_task)
         elif start_position and destination_task:
-            path = self.path_planner.get_path_plan(start_floor=start_floor, destination_floor=destination_floor, start_area=start_area,
-                                                   destination_area=destination_area, robot_position=start_position, destination_task=destination_task)
+            path = self.path_planner.get_path_plan(start_floor=start_floor,
+                                                   destination_floor=destination_floor,
+                                                   start_area=start_area,
+                                                   destination_area=destination_area,
+                                                   robot_position=start_position,
+                                                   destination_task=destination_task)
         elif start_position and destination_local_area:
-            path = self.path_planner.get_path_plan(start_floor=start_floor, destination_floor=destination_floor, start_area=start_area,
-                                                   destination_area=destination_area, robot_position=start_position, destination_local_area=destination_local_area)
+            path = self.path_planner.get_path_plan(start_floor=start_floor,
+                                                   destination_floor=destination_floor,
+                                                   start_area=start_area,
+                                                   destination_area=destination_area,
+                                                   robot_position=start_position,
+                                                   destination_local_area=destination_local_area)
         else:
             rospy.logerr("Path planner need more arguments to plan the path")
 
@@ -77,6 +99,10 @@ class OSMTopologicalPlannerCallback(object):
             path)
         return result
 
+    # generates symbolic topological navigation plan from list of areas
+    # ASSUMPTIONS
+    # - robot always starts in an area with sufficient features for localization
+    # - rooms/ areas are always either start or destination (basically plan should be split in room/area)
     def _generate_topological_action_plan(self, areas):
         topological_actions = []
         last_orientation = 0
@@ -85,9 +111,13 @@ class OSMTopologicalPlannerCallback(object):
         combine = False
 
         for i, area in enumerate(areas):
-            print(area)
+            # for debugging
+            # print(area)
+
+            # for starting room
             if (i == 0):
                 if area.type == "room":
+                    # area navigation
                     ta = TopologicalAction()
                     ta.area_ids.append(area.id)
                     ta.type = area.type
@@ -97,6 +127,7 @@ class OSMTopologicalPlannerCallback(object):
                     ta.navigation_skill_type = "area_navigation"
                     topological_actions.append(ta)
 
+                    # door passing
                     ta = TopologicalAction()
                     ta.area_ids.append(area.exit_door.id)
                     ta.type = 'door'
@@ -116,6 +147,7 @@ class OSMTopologicalPlannerCallback(object):
                         "Robot must start in a room to localize itself")
                     return topological_actions
             else:
+                # combining corridors
                 if last_area_type == area.type and area.type == "corridor":
                     topological_actions[
                         len(topological_actions) - 1].area_ids.append(area.id)
@@ -125,6 +157,7 @@ class OSMTopologicalPlannerCallback(object):
                     topological_actions[len(topological_actions) - 1].goal_distance = topological_actions[
                         len(topological_actions) - 1].goal_distance + self._compute_distance(pt, last_pt)
                     last_pt = pt
+                # corridor -> junction
                 elif last_area_type == 'corridor' and area.type == 'junction':
                     topological_actions[
                         len(topological_actions) - 1].goal_id = area.id
@@ -134,7 +167,7 @@ class OSMTopologicalPlannerCallback(object):
                     topological_actions[len(topological_actions) - 1].goal_distance = topological_actions[
                         len(topological_actions) - 1].goal_distance + self._compute_distance(pt, last_pt)
                     last_pt = pt
-                # junction can never be a destination so its the corridor
+                # junction -> corridor
                 elif last_area_type == 'junction' and area.type == 'corridor':
                     topological_actions[
                         len(topological_actions) - 1].goal_id = area.id
@@ -146,6 +179,7 @@ class OSMTopologicalPlannerCallback(object):
                     topological_actions[
                         len(topological_actions) - 1].goal_distance = self._compute_distance(pt, last_pt)
                     last_pt = pt
+                # combining areas
                 elif last_area_type == area.type and area.type == "area":
                     topological_actions[
                         len(topological_actions) - 1].area_ids.append(area.id)
@@ -213,6 +247,6 @@ class OSMTopologicalPlannerCallback(object):
 
                 last_area_type = area.type
                 combine = False
-            print(last_area_type)
+            # print(last_area_type)
 
         return topological_actions
