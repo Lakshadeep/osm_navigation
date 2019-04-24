@@ -16,17 +16,12 @@ class ComputeOrientation(object):
         door_angle = math.atan2(
             door_points[1].y - door_points[0].y, door_points[1].x - door_points[0].x)
         door_angle1 = self._wrap_to_pi(door_angle + math.pi / 2)
-        # print('door1', door_angle1*180/math.pi)
         door_angle2 = self._wrap_to_pi(door_angle - math.pi / 2)
-        # print('door2', door_angle2*180/math.pi)
         door_area_angle = math.atan2(
             (next_area_center.y - door_center.y), (next_area_center.x - door_center.x))
-        # print('door area angle', door_area_angle * 180/math.pi)
         if(math.fabs(self._wrap_to_pi(door_area_angle - door_angle1)) < math.fabs(self._wrap_to_pi(door_area_angle - door_angle2))):
-            # print(door_angle1*180/math.pi)
             return door_angle1
         else:
-            # print(door_angle2*180/math.pi)
             return door_angle2
 
     def _wrap_to_pi(self, angle):
@@ -50,8 +45,8 @@ class ComputeOrientation(object):
     def get_junction_orientation(self, junction, next_area):
         junction_center = self._compute_center(junction.geometry.points)
         next_area_center = self._compute_center(next_area.geometry.points)
-        angle = self._wrap_to_pi(math.atan2((next_area_center.y - junction_center.y), ( next_area_center.x - junction_center.x)))
-        # print(angle*180/math.pi)
+        angle = self._wrap_to_pi(math.atan2(
+            (next_area_center.y - junction_center.y), (next_area_center.x - junction_center.x)))
         return angle
 
     def get_corridor_orientation(self, prev_area, curr_area, next_area):
@@ -59,12 +54,13 @@ class ComputeOrientation(object):
         exit_pt = self._compute_center(exit_pts)
         if (isinstance(prev_area, float)):
             curr_area_center = self._compute_center(curr_area.geometry.points)
-            angle = math.atan2(exit_pt.y - curr_area_center.y, exit_pt.x - curr_area_center.x)
+            angle = math.atan2(exit_pt.y - curr_area_center.y,
+                               exit_pt.x - curr_area_center.x)
         else:
             entry_pts = self._get_nearest_points(prev_area, curr_area)
             entry_pt = self._compute_center(entry_pts)
-            angle = math.atan2((exit_pt.y - entry_pt.y), (exit_pt.x - entry_pt.x))
-        # print(angle*180/math.pi)
+            angle = math.atan2((exit_pt.y - entry_pt.y),
+                               (exit_pt.x - entry_pt.x))
         return angle
 
     def _get_nearest_points(self, other_area, current_area):
