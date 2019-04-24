@@ -120,11 +120,21 @@ class OSMTopologicalPlannerCallback(object):
                     topological_actions[
                         len(topological_actions) - 1].area_ids.append(area.id)
                     combine = True
+                    pt = areas[i].local_areas[
+                        len(areas[i].local_areas) - 1].topology
+                    topological_actions[len(topological_actions) - 1].goal_distance = topological_actions[
+                        len(topological_actions) - 1].goal_distance + self._compute_distance(pt, last_pt)
+                    last_pt = pt
                 elif last_area_type == 'corridor' and area.type == 'junction':
                     topological_actions[
                         len(topological_actions) - 1].goal_id = area.id
                     topological_actions[
                         len(topological_actions) - 1].goal_type = 'junction'
+                    pt = areas[i].local_areas[0].topology
+                    topological_actions[len(topological_actions) - 1].goal_distance = topological_actions[
+                        len(topological_actions) - 1].goal_distance + self._compute_distance(pt, last_pt)
+                    last_pt = pt
+                # junction can never be a destination so its the corridor
                 elif last_area_type == 'junction' and area.type == 'corridor':
                     topological_actions[
                         len(topological_actions) - 1].goal_id = area.id
@@ -132,6 +142,10 @@ class OSMTopologicalPlannerCallback(object):
                         len(topological_actions) - 1].goal_type = 'corridor'
                     topological_actions[
                         len(topological_actions) - 1].navigation_skill_type = 'junction_navigation'
+                    pt = area.local_areas[0].topology
+                    topological_actions[
+                        len(topological_actions) - 1].goal_distance = self._compute_distance(pt, last_pt)
+                    last_pt = pt
                 elif last_area_type == area.type and area.type == "area":
                     topological_actions[
                         len(topological_actions) - 1].area_ids.append(area.id)
@@ -150,50 +164,55 @@ class OSMTopologicalPlannerCallback(object):
                     ta = TopologicalAction()
                     ta.area_ids.append(area.id)
                     ta.type = area.type
-                    if area.type == 'room' or area.type == 'area':
-                        if area.exit_door:
-                            ta.goal_id = area.exit_door.id
-                            ta.goal_type = 'door'
+                    # Assumption: we never have intermediate rooms to pass through in 1 plan
+                    # if area.type == 'room' or area.type == 'area':
+                    #     if area.exit_door:
+                    #         ta.goal_id = area.exit_door.id
+                    #         ta.goal_type = 'door'
+                    #     else:
+                    #         orientation = self.compute_orientation.get_corridor_orientation(
+                    #             areas[i - 1], area, areas[i + 1])
+                    #         ta.goal_direction = self._angle_to_direction(
+                    #             orientation, last_orientation)
+                    #         last_orientation = orientation
+
+                    #     ta.navigation_skill_type = 'area_navigation'
+                    #     last_pt = areas[i + 1].local_areas[0].topology
+                    if area.type == 'corridor':
+                        ta.goal_id = area.id
+                        ta.goal_type = ''
+                        ta.navigation_skill_type = 'hallway_navigation'
+                        if last_area_type == 'door':
+                            orientation = self.compute_orientation.get_corridor_orientation(
+                                last_orientation, area, areas[i + 1])
+                            ta.goal_direction = self._angle_to_direction(
+                                orientation, last_orientation)
+                            last_orientation = orientation
                         else:
                             orientation = self.compute_orientation.get_corridor_orientation(
                                 areas[i - 1], area, areas[i + 1])
-                            ta.goal_direction=self._angle_to_direction(
+                            ta.goal_direction = self._angle_to_direction(
                                 orientation, last_orientation)
-                            last_orientation=orientation
-
-                        ta.navigation_skill_type='area_navigation'
-                        last_pt = areas[i + 1].local_areas[0].topology
-                    elif area.type == 'corridor':
-                        ta.goal_id=area.id
-                        ta.goal_type=''
-                        ta.navigation_skill_type='hallway_navigation'
-                        if last_area_type == 'door':
-                            orientation=self.compute_orientation.get_corridor_orientation(
-                                last_orientation, area, areas[i + 1])
-                            ta.goal_direction=self._angle_to_direction(
-                                orientation, last_orientation)
-                            last_orientation=orientation
-                        else:
-                            orientation=self.compute_orientation.get_corridor_orientation(
-                                areas[i - 1], area, areas[i + 1])
-                            ta.goal_direction=self._angle_to_direction(
-                                orientation, last_orientation)
-                            last_orientation=orientation
-
+                            last_orientation = orientation
+                        start_pt = area.local_areas[0].topology
+                        end_pt = areas[i + 1].local_areas[0].topology
+                        ta.goal_distance = self._compute_distance(
+                            start_pt, end_pt)
+                        last_pt = end_pt
                     elif area.type == 'junction':
-                        ta.goal_id=area.id
-                        ta.goal_type=''
-                        ta.navigation_skill_type='junction_maneuvering'
-                        orientation=self.compute_orientation.get_junction_orientation(area, areas[
-                                                                                        i + 1])
-                        ta.goal_direction=self._angle_to_direction(
+                        ta.goal_id = area.id
+                        ta.goal_type = ''
+                        ta.navigation_skill_type = 'junction_maneuvering'
+                        orientation = self.compute_orientation.get_junction_orientation(area, areas[
+                            i + 1])
+                        ta.goal_direction = self._angle_to_direction(
                             orientation, last_orientation)
-                        last_orientation=orientation
+                        last_orientation = orientation
                         last_pt = area.topology
                     topological_actions.append(ta)
 
-                last_area_type=area.type
-                combine=False
+                last_area_type = area.type
+                combine = False
             print(last_area_type)
 
         return topological_actions
