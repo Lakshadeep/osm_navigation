@@ -1,7 +1,7 @@
-from osm_planner_msgs.msg import *
 import math
 from geometry_msgs.msg import Pose, Point, Quaternion
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
+from osm_planner_msgs.msg import *
 
 
 class ComputeOrientation(object):
@@ -9,6 +9,7 @@ class ComputeOrientation(object):
     def __init__(self):
         pass
 
+    # computes door orientation based on next area
     def get_door_orientation(self, door, next_area):
         door_points = self._get_door_points(door.geometry.points)
         door_center = self._compute_center(door.geometry.points)
@@ -42,6 +43,7 @@ class ComputeOrientation(object):
                     y=(sides[1][0].y + sides[0][1].y) / 2.0)
         return [pt1, pt2]
 
+    # computes junction orientation based on next area
     def get_junction_orientation(self, junction, next_area):
         junction_center = self._compute_center(junction.geometry.points)
         next_area_center = self._compute_center(next_area.geometry.points)
@@ -49,6 +51,9 @@ class ComputeOrientation(object):
             (next_area_center.y - junction_center.y), (next_area_center.x - junction_center.x)))
         return angle
 
+    # computes corridor orientation based on previous and next area
+    # if previous area is not available then prev_area should equal to either
+    # 0.0 or desired offset
     def get_corridor_orientation(self, prev_area, curr_area, next_area):
         exit_pts = self._get_nearest_points(next_area, curr_area)
         exit_pt = self._compute_center(exit_pts)
@@ -63,6 +68,7 @@ class ComputeOrientation(object):
                                (exit_pt.x - entry_pt.x))
         return angle
 
+    # gets points of current area which are closest to specified area
     def _get_nearest_points(self, other_area, current_area):
         other_area_mid_point = self._compute_center(other_area.geometry.points)
         distances = []

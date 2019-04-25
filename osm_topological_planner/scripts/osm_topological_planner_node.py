@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-PACKAGE = 'osm_topological_planner'
-NODE = 'osm_topological_planner_node'
-
 import rospy
 import actionlib
 
@@ -11,6 +8,8 @@ from actionlib import SimpleActionServer
 from osm_planner_msgs.msg import *
 from osm_topological_planner.osm_topological_planner_callback import OSMTopologicalPlannerCallback
 
+PACKAGE = 'osm_topological_planner'
+NODE = 'osm_topological_planner_node'
 
 class OSMTopologicalPlannerNode(object):
 
