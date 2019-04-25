@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-PACKAGE = 'osm_topological_planner'
-NODE = 'osm_topological_planner_node'
-
 import rospy
 import actionlib
 
@@ -11,6 +8,8 @@ from actionlib import SimpleActionServer
 from osm_planner_msgs.msg import *
 from osm_topological_planner.osm_topological_planner_callback import OSMTopologicalPlannerCallback
 
+PACKAGE = 'osm_topological_planner'
+NODE = 'osm_topological_planner_node'
 
 class OSMTopologicalPlannerNode(object):
 
@@ -26,10 +25,6 @@ class OSMTopologicalPlannerNode(object):
         rospy.loginfo("Global origin: " + str(global_origin))
         rospy.loginfo("Starting servers...")
 
-        self.osm_trajectory_planner_client = actionlib.SimpleActionClient(
-            "/osm_trajectory_planner", OSMTrajectoryPlannerAction)
-        self.osm_trajectory_planner_client.wait_for_server()
-        rospy.loginfo("OSM trajectory planner available now")
 
         self.osm_topological_planner_server = SimpleActionServer(
             '/osm_topological_planner', OSMTopologicalPlannerAction, self._osm_topological_planner, False)
@@ -41,8 +36,10 @@ class OSMTopologicalPlannerNode(object):
             global_origin=global_origin,
             coordinate_system="cartesian",
             debug=False)
+        path_planner = PathPlanner(osm_bridge)
+        path_planner.set_building(building)
         self.osm_topological_planner_callback = OSMTopologicalPlannerCallback(
-            osm_bridge, self.osm_trajectory_planner_client)
+            osm_bridge, path_planner)
         rospy.loginfo(
             "OSM topological planner server started. Listening for requests...")
 
