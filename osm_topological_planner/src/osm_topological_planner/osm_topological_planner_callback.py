@@ -14,12 +14,11 @@ class OSMTopologicalPlannerCallback(object):
         self.compute_orientation = ComputeOrientation()
 
     def get_safe_response(self, req):
-        try:
-            res = self._get_response(req)
-            return res
-        except Exception as e:
-            rospy.logerr(str(e))
-            return None
+        # try:
+        res = self._get_response(req)
+        # except Exception as e:
+        #     rospy.logerr(str(e))
+        #     return None
         return res
 
     def _compute_distance(self, pt1, pt2):
@@ -105,7 +104,7 @@ class OSMTopologicalPlannerCallback(object):
     # - rooms/ areas are always either start or destination (basically plan should be split in room/area)
     def _generate_topological_action_plan(self, areas):
         topological_actions = []
-        last_orientation = 0
+        last_orientation = 0.0
         last_pt = None
         last_area_type = ''
         combine = False
@@ -142,9 +141,40 @@ class OSMTopologicalPlannerCallback(object):
                     ta.goal_distance = self._compute_distance(area.exit_door.topology, areas[
                                                               i + 1].local_areas[0].topology)
                     last_pt = areas[i + 1].local_areas[0].topology
+                # for corridor and room starting area we assume that we know that 
+                # robot is already facing correct direction
+                # NOTE: This is a hack! Ideally starting area should be always a room, 
+                # following is a fix for testing
+                elif area.type == "corridor":
+                    ta = TopologicalAction()
+                    ta.area_ids.append(area.id)
+                    ta.type = area.type
+                    ta.goal_id = -1
+                    ta.goal_type = ''
+                    ta.goal_direction = 1
+                    ta.navigation_skill_type = "hallway_navigation"
+                    topological_actions.append(ta)
+                    last_area_type = area.type
+                    last_pt = area.local_areas[len(area.local_areas)-1].topology
+                    last_orientation = self.compute_orientation.get_corridor_orientation(
+                                last_orientation, area, areas[i + 1])
+                elif area.type == "area":
+                    ta = TopologicalAction()
+                    ta.area_ids.append(area.id)
+                    ta.type = area.type
+                    if area.exit_door:
+                        ta.goal_id = area.exit_door.id
+                        ta.goal_type = 'door'
+                    else:
+                        ta.goal_id = -1
+                        ta.goal_type = ''
+                    ta.goal_direction = 1
+                    ta.navigation_skill_type = "area_navigation"
+                    topological_actions.append(ta)
+                    last_area_type = area.type
                 else:
                     rospy.logerr(
-                        "Robot must start in a room to localize itself")
+                        "Robot must start in a room or corridor")
                     return topological_actions
             else:
                 # combining corridors
@@ -193,25 +223,39 @@ class OSMTopologicalPlannerCallback(object):
                         topological_actions[
                             len(topological_actions) - 1].goal_direction = 1
                     combine = True
-
+                elif last_area_type == 'corridor' and area.type == 'room':
+                    # door passing
+                    ta = TopologicalAction()
+                    ta.area_ids.append(areas[i-1].exit_door.id)
+                    ta.type = 'door'
+                    ta.goal_id = area.id
+                    ta.goal_type = area.type
+                    ta.navigation_skill_type = "door_navigation"
+                    door_orientation = self.compute_orientation.get_door_orientation(areas[i-1].exit_door, area)
+                    ta.goal_direction = self._angle_to_direction(door_orientation, last_orientation)
+                    last_orientation = door_orientation
+                    ta.goal_distance = 1  # hardcoded to 1 m for time being
+                    topological_actions.append(ta)
+                    last_pt = areas[i-1].exit_door.topology
+                
                 if not combine:
                     ta = TopologicalAction()
                     ta.area_ids.append(area.id)
                     ta.type = area.type
-                    # Assumption: we never have intermediate rooms to pass through in 1 plan
-                    # if area.type == 'room' or area.type == 'area':
-                    #     if area.exit_door:
-                    #         ta.goal_id = area.exit_door.id
-                    #         ta.goal_type = 'door'
-                    #     else:
-                    #         orientation = self.compute_orientation.get_corridor_orientation(
-                    #             areas[i - 1], area, areas[i + 1])
-                    #         ta.goal_direction = self._angle_to_direction(
-                    #             orientation, last_orientation)
-                    #         last_orientation = orientation
-
-                    #     ta.navigation_skill_type = 'area_navigation'
-                    #     last_pt = areas[i + 1].local_areas[0].topology
+                    # Assumption: we never have intermediate rooms to pass through in 1 plan except exit
+                    if area.type == 'room' or area.type == 'area':
+                        if area.exit_door:
+                            ta.goal_id = area.exit_door.id
+                            ta.goal_type = 'door'
+                        else:
+                            if i is not len(areas) - 1:
+                                orientation = self.compute_orientation.get_corridor_orientation(
+                                    areas[i - 1], area, areas[i + 1])
+                                ta.goal_direction = self._angle_to_direction(
+                                    orientation, last_orientation)
+                                last_orientation = orientation
+                                last_pt = areas[i + 1].local_areas[0].topology
+                        ta.navigation_skill_type = 'area_navigation'
                     if area.type == 'corridor':
                         ta.goal_id = area.id
                         ta.goal_type = ''
