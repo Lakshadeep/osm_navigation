@@ -256,3 +256,29 @@ rosrun actionlib axclient.py  "/area_navigation_server" area_navigation/AreaNavi
 
 goal_type: 0    (0 - exit)
 ```
+
+## Symbolic navigation
+Executes symbolic feature based navigation using topological plan & environment specific navigation skills
+
+#### Action servers
+* `/symbolic_navigation` 
+
+#### Launch
+`roslaunch symbolic_navigation symbolic_navigation.launch`
+
+#### Tests
+```
+rosrun actionlib axclient.py  "/symbolic_navigation_server" symbolic_navigation/SymbolicNavigationAction
+
+start_floor: 'BRSU_L0'
+destination_floor: 'BRSU_L0'
+start_area: 'BRSU_C_L0_C3'
+destination_area: 'BRSU_C_L0_RoomC022'
+start_local_area: 'BRSU_C_L0_C3_LA1'
+destination_local_area: 'BRSU_C_L0_RoomC022_LA1'
+start_position: 
+  x: 0.0
+  y: 0.0
+  z: 0.0
+destination_task: ''
+

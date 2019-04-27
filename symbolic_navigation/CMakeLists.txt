@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   osm_topological_planner
   actionlib_msgs
   actionlib
+  osm_planner_msgs
 )
 
 add_action_files(
@@ -39,11 +40,18 @@ generate_messages(
   nav_msgs
   osm_map_msgs
   actionlib_msgs
+  osm_planner_msgs
 )
 
 catkin_package(
   CATKIN_DEPENDS
   message_runtime std_msgs actionlib_msgs
+  std_msgs
+  geometry_msgs
+  nav_msgs
+  osm_map_msgs
+  actionlib_msgs
+  osm_planner_msgs
 )
 
 ###########
@@ -61,11 +69,11 @@ add_library(symbolic_navigation src/symbolic_navigation.cpp)
 target_link_libraries(symbolic_navigation ${catkin_LIBRARIES})
 
 add_library(symbolic_navigation_ros src/symbolic_navigation_ros.cpp)
-target_link_libraries(symbolic_navigation_ros symbolic_navigation ${catkin_LIBRARIES})
+target_link_libraries(symbolic_navigation_ros symbolic_navigation ${catkin_LIBRARIES} ${LIBS})
 add_dependencies(symbolic_navigation_ros symbolic_navigation_generate_messages_cpp)
 
 add_executable(symbolic_navigation_node src/symbolic_navigation_node.cpp)
-target_link_libraries(symbolic_navigation_node symbolic_navigation_ros ${catkin_LIBRARIES})
+target_link_libraries(symbolic_navigation_node symbolic_navigation_ros ${catkin_LIBRARIES} ${LIBS})
 
 include_directories(include ${catkin_INCLUDE_DIRS})
 include_directories(include ${EIGEN3_INCLUDE_DIRS})

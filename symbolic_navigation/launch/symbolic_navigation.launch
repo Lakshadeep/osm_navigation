@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+    <node name="osm_topological_planner_node" pkg="osm_topological_planner" type="osm_topological_planner_node.py" output="screen">
+        <param name="overpass_server_ip" value="172.16.1.101" />
+        <param name="overpass_server_port" value="8000" />
+        <param name="ref_latitude" value="50.7800401" />  
+        <param name="ref_longitude" value="7.18226" /> 
+        <param name="building" value="BRSU" />
+    </node>  
+
+    <node name="symbolic_navigation_node" pkg="symbolic_navigation" type="symbolic_navigation_node" output="screen">
+    </node> 
+</launch>
