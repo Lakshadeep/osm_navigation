@@ -31,11 +31,31 @@ void SymbolicNavigationROS::SymbolicNavigationExecute(const symbolic_navigation:
     planner_req.destination_task = goal->destination_task;
     if(callTopologicalPlanner(planner_req))
     {
-        ROS_INFO("Topological plan successfully received");
+        for(int i = 0; i < osm_topological_planner_result_.topological_actions.size(); i++)
+        {
+            std::string navigation_skill_type = osm_topological_planner_result_.topological_actions[i].navigation_skill_type;
+            ROS_DEBUG("Navigation skill type: %s", navigation_skill_type.c_str());
+            if (navigation_skill_type == "hallway_navigation")
+            {
+                executeCorridorNavigation(osm_topological_planner_result_.topological_actions[i]);
+            }
+            else if (navigation_skill_type == "junction_navigation")
+            {
+                executeJunctionManeuvering(osm_topological_planner_result_.topological_actions[i]);
+            }
+            else if (navigation_skill_type == "area_navigation")
+            {
+                executeAreaNavigation(osm_topological_planner_result_.topological_actions[i]);
+            }
+            else if (navigation_skill_type == "door_navigation")
+            {
+                executeDoorPassing(osm_topological_planner_result_.topological_actions[i]);
+            }
+        }
     }
     else
     {
-        ROS_ERROR("There was problem receiving the plan");
+        ROS_ERROR("There was problem receiving the topological navigation plan");
     }
 }
 
@@ -49,9 +69,6 @@ void SymbolicNavigationROS::loadParameters()
 
 bool SymbolicNavigationROS::callTopologicalPlanner(osm_planner_msgs::OSMTopologicalPlannerGoal req)
 {
-    // ropod_ros_msgs::GetTopologyNodeGoal req;
-    // req.id = id;
-    // req.type = entity_type;
     osm_topological_planner_client_.sendGoal(req, boost::bind(&SymbolicNavigationROS::topologicalPlannerResultCb, this, _1, _2));
     bool finished_before_timeout = osm_topological_planner_client_.waitForResult(ros::Duration(60.0));
     if (osm_topological_planner_client_.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
@@ -65,3 +82,23 @@ void SymbolicNavigationROS::topologicalPlannerResultCb(const actionlib::SimpleCl
 {
     osm_topological_planner_result_ = *result;
 }
+
+bool SymbolicNavigationROS::executeJunctionManeuvering(osm_planner_msgs::TopologicalAction topoglogical_action)
+{
+    return false;
+} 
+
+bool SymbolicNavigationROS::executeCorridorNavigation(osm_planner_msgs::TopologicalAction topoglogical_action)
+{
+    return false;
+} 
+
+bool SymbolicNavigationROS::executeDoorPassing(osm_planner_msgs::TopologicalAction topoglogical_action)
+{
+    return false;
+} 
+
+bool SymbolicNavigationROS::executeAreaNavigation(osm_planner_msgs::TopologicalAction topoglogical_action)
+{
+    return false;
+} 

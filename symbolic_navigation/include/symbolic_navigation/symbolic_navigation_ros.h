@@ -43,6 +43,11 @@ private:
     bool callTopologicalPlanner(osm_planner_msgs::OSMTopologicalPlannerGoal req);
     void topologicalPlannerResultCb(const actionlib::SimpleClientGoalState& state, const osm_planner_msgs::OSMTopologicalPlannerResultConstPtr& result);
 
+    bool executeJunctionManeuvering(osm_planner_msgs::TopologicalAction topoglogical_action);
+    bool executeCorridorNavigation(osm_planner_msgs::TopologicalAction topoglogical_action);
+    bool executeDoorPassing(osm_planner_msgs::TopologicalAction topoglogical_action);
+    bool executeAreaNavigation(osm_planner_msgs::TopologicalAction topoglogical_action);
+
 };
 
 #endif

@@ -8,6 +8,6 @@
         <param name="building" value="BRSU" />
     </node>  
 
-    <node name="symbolic_navigation_node" pkg="symbolic_navigation" type="symbolic_navigation_node" output="screen">
+    <node name="symbolic_navigation_node" pkg="symbolic_navigation" type="symbolic_navigation_node">
     </node> 
 </launch>
