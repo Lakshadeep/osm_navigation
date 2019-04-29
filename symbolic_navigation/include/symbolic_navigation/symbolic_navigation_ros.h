@@ -7,13 +7,13 @@
 #include <actionlib/server/simple_action_server.h>
 #include <actionlib/client/simple_action_client.h>
 #include <symbolic_navigation/symbolic_navigation.h>
-//#include <symbolic_navigation/structs.h>
 
 // ROS messages
 #include <symbolic_navigation/SymbolicNavigationAction.h>
 #include <corridor_navigation/CorridorNavigationAction.h>
 #include <junction_maneuvering/JunctionManeuveringAction.h>
 #include <door_passing/DoorPassingAction.h>
+#include <area_navigation/AreaNavigationAction.h>
 #include <osm_planner_msgs/OSMTopologicalPlannerAction.h>
 
 
@@ -38,11 +38,13 @@ private:
     actionlib::SimpleActionClient<corridor_navigation::CorridorNavigationAction> corridor_navigation_client_;
     actionlib::SimpleActionClient<junction_maneuvering::JunctionManeuveringAction> junction_maneuvering_client_;
     actionlib::SimpleActionClient<door_passing::DoorPassingAction> door_passing_client_;
+    actionlib::SimpleActionClient<area_navigation::AreaNavigationAction> area_navigation_client_;
 
     osm_planner_msgs::OSMTopologicalPlannerResult osm_topological_planner_result_;
     corridor_navigation::CorridorNavigationResult corridor_navigation_result_;
     junction_maneuvering::JunctionManeuveringResult junction_maneuvering_result_;
     door_passing::DoorPassingResult door_passing_result_;
+    area_navigation::AreaNavigationResult area_navigation_result_;
 
     int controller_frequency_;
 
@@ -59,12 +61,12 @@ private:
     void corridorNavigationResultCb(const actionlib::SimpleClientGoalState& state, const corridor_navigation::CorridorNavigationResultConstPtr& result);
     void junctionManeuveringResultCb(const actionlib::SimpleClientGoalState& state, const junction_maneuvering::JunctionManeuveringResultConstPtr& result);
     void doorPassingResultCb(const actionlib::SimpleClientGoalState& state, const door_passing::DoorPassingResultConstPtr& result);
+    void areaNavigationResultCb(const actionlib::SimpleClientGoalState& state, const area_navigation::AreaNavigationResultConstPtr& result);
 
     bool executeJunctionManeuvering(osm_planner_msgs::TopologicalAction topoglogical_action);
     bool executeCorridorNavigation(osm_planner_msgs::TopologicalAction topoglogical_action);
     bool executeDoorPassing(osm_planner_msgs::TopologicalAction topoglogical_action);
     bool executeAreaNavigation(osm_planner_msgs::TopologicalAction topoglogical_action);
-
 };
 
 #endif

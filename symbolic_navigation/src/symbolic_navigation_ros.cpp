@@ -3,7 +3,8 @@
 SymbolicNavigationROS::SymbolicNavigationROS(ros::NodeHandle& nh): nh_(nh), symbolic_navigation_server_(nh,"/symbolic_navigation_server",
   boost::bind(&SymbolicNavigationROS::SymbolicNavigationExecute, this, _1),false), 
   osm_topological_planner_client_("/osm_topological_planner", true), corridor_navigation_client_("/corridor_navigation_server", true),
-  junction_maneuvering_client_("/junction_maneuvering_server", true), door_passing_client_("/door_passing_server", true) 
+  junction_maneuvering_client_("/junction_maneuvering_server", true), door_passing_client_("/door_passing_server", true),
+  area_navigation_client_("/area_navigation_server", true) 
 {
     loadParameters(); 
     symbolic_navigation_server_.start();
@@ -12,7 +13,6 @@ SymbolicNavigationROS::SymbolicNavigationROS(ros::NodeHandle& nh): nh_(nh), symb
 
 SymbolicNavigationROS::~SymbolicNavigationROS()
 {
-
 }
 
 void SymbolicNavigationROS::run()
@@ -99,6 +99,11 @@ void SymbolicNavigationROS::doorPassingResultCb(const actionlib::SimpleClientGoa
     door_passing_result_ = *result;
 }
 
+void SymbolicNavigationROS::areaNavigationResultCb(const actionlib::SimpleClientGoalState& state, const area_navigation::AreaNavigationResultConstPtr& result)
+{
+    area_navigation_result_ = *result;
+}
+
 bool SymbolicNavigationROS::executeJunctionManeuvering(osm_planner_msgs::TopologicalAction topoglogical_action)
 {
     junction_maneuvering::JunctionManeuveringGoal junction_maneuvering_request;
@@ -154,5 +159,14 @@ bool SymbolicNavigationROS::executeDoorPassing(osm_planner_msgs::TopologicalActi
 
 bool SymbolicNavigationROS::executeAreaNavigation(osm_planner_msgs::TopologicalAction topoglogical_action)
 {
+    area_navigation::AreaNavigationGoal area_navigation_request;
+    area_navigation_request.goal_type = 0; // Hardcoded to exit right now
+
+    area_navigation_client_.sendGoal(area_navigation_request, boost::bind(&SymbolicNavigationROS::areaNavigationResultCb, this, _1, _2));
+    bool finished_before_timeout = area_navigation_client_.waitForResult(ros::Duration(600.0));
+    if (area_navigation_client_.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+    {
+        return true;
+    }
     return false;
 } 
