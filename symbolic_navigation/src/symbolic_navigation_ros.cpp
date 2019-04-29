@@ -2,7 +2,8 @@
 
 SymbolicNavigationROS::SymbolicNavigationROS(ros::NodeHandle& nh): nh_(nh), symbolic_navigation_server_(nh,"/symbolic_navigation_server",
   boost::bind(&SymbolicNavigationROS::SymbolicNavigationExecute, this, _1),false), 
-  osm_topological_planner_client_("/osm_topological_planner", true), corridor_navigation_client_("/corridor_navigation_server", true) 
+  osm_topological_planner_client_("/osm_topological_planner", true), corridor_navigation_client_("/corridor_navigation_server", true),
+  junction_maneuvering_client_("/junction_maneuvering_server", true) 
 {
     loadParameters(); 
     symbolic_navigation_server_.start();
@@ -88,8 +89,24 @@ void SymbolicNavigationROS::corridorNavigationResultCb(const actionlib::SimpleCl
     corridor_navigation_result_ = *result;
 }
 
+void SymbolicNavigationROS::junctionManeuveringResultCb(const actionlib::SimpleClientGoalState& state, const junction_maneuvering::JunctionManeuveringResultConstPtr& result)
+{
+    junction_maneuvering_result_ = *result;
+}
+
 bool SymbolicNavigationROS::executeJunctionManeuvering(osm_planner_msgs::TopologicalAction topoglogical_action)
 {
+    junction_maneuvering::JunctionManeuveringGoal junction_maneuvering_request;
+    junction_maneuvering_request.turn_direction = topoglogical_action.goal_direction;
+    junction_maneuvering_request.junction = 1; // currently topological planner makes no distinction between junction types 
+    junction_maneuvering_request.distance = topoglogical_action.goal_distance;
+
+    junction_maneuvering_client_.sendGoal(junction_maneuvering_request, boost::bind(&SymbolicNavigationROS::junctionManeuveringResultCb, this, _1, _2));
+    bool finished_before_timeout = junction_maneuvering_client_.waitForResult(ros::Duration(600.0));
+    if (junction_maneuvering_client_.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+    {
+        return true;
+    }
     return false;
 } 
 
