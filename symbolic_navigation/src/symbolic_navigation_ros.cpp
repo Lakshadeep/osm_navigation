@@ -3,7 +3,7 @@
 SymbolicNavigationROS::SymbolicNavigationROS(ros::NodeHandle& nh): nh_(nh), symbolic_navigation_server_(nh,"/symbolic_navigation_server",
   boost::bind(&SymbolicNavigationROS::SymbolicNavigationExecute, this, _1),false), 
   osm_topological_planner_client_("/osm_topological_planner", true), corridor_navigation_client_("/corridor_navigation_server", true),
-  junction_maneuvering_client_("/junction_maneuvering_server", true) 
+  junction_maneuvering_client_("/junction_maneuvering_server", true), door_passing_client_("/door_passing_server", true) 
 {
     loadParameters(); 
     symbolic_navigation_server_.start();
@@ -94,6 +94,11 @@ void SymbolicNavigationROS::junctionManeuveringResultCb(const actionlib::SimpleC
     junction_maneuvering_result_ = *result;
 }
 
+void SymbolicNavigationROS::doorPassingResultCb(const actionlib::SimpleClientGoalState& state, const door_passing::DoorPassingResultConstPtr& result)
+{
+    door_passing_result_ = *result;
+}
+
 bool SymbolicNavigationROS::executeJunctionManeuvering(osm_planner_msgs::TopologicalAction topoglogical_action)
 {
     junction_maneuvering::JunctionManeuveringGoal junction_maneuvering_request;
@@ -134,8 +139,18 @@ bool SymbolicNavigationROS::executeCorridorNavigation(osm_planner_msgs::Topologi
 
 bool SymbolicNavigationROS::executeDoorPassing(osm_planner_msgs::TopologicalAction topoglogical_action)
 {
+    door_passing::DoorPassingGoal door_passing_request;
+    door_passing_request.door = topoglogical_action.goal_direction;
+    door_passing_request.distance_inside = topoglogical_action.goal_distance;
+
+    door_passing_client_.sendGoal(door_passing_request, boost::bind(&SymbolicNavigationROS::doorPassingResultCb, this, _1, _2));
+    bool finished_before_timeout = door_passing_client_.waitForResult(ros::Duration(600.0));
+    if (door_passing_client_.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+    {
+        return true;
+    }
     return false;
-} 
+}
 
 bool SymbolicNavigationROS::executeAreaNavigation(osm_planner_msgs::TopologicalAction topoglogical_action)
 {
