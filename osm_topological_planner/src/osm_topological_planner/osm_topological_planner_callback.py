@@ -241,6 +241,11 @@ class OSMTopologicalPlannerCallback(object):
                     topological_actions.append(ta)
                     last_pt = areas[i - 1].exit_door.topology
 
+                    if ta.goal_direction == 2:
+                        topological_actions[len(topological_actions) - 1].goal_type = 'left_door'
+                    elif ta.goal_direction == 0:
+                        topological_actions[len(topological_actions) - 1].goal_type = 'right_door'
+
                 if not combine:
                     ta = TopologicalAction()
                     ta.area_ids.append(area.id)

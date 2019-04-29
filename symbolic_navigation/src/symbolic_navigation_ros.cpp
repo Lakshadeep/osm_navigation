@@ -2,7 +2,7 @@
 
 SymbolicNavigationROS::SymbolicNavigationROS(ros::NodeHandle& nh): nh_(nh), symbolic_navigation_server_(nh,"/symbolic_navigation_server",
   boost::bind(&SymbolicNavigationROS::SymbolicNavigationExecute, this, _1),false), 
-  osm_topological_planner_client_("/osm_topological_planner", true)
+  osm_topological_planner_client_("/osm_topological_planner", true), corridor_navigation_client_("/corridor_navigation_server", true) 
 {
     loadParameters(); 
     symbolic_navigation_server_.start();
@@ -83,6 +83,11 @@ void SymbolicNavigationROS::topologicalPlannerResultCb(const actionlib::SimpleCl
     osm_topological_planner_result_ = *result;
 }
 
+void SymbolicNavigationROS::corridorNavigationResultCb(const actionlib::SimpleClientGoalState& state, const corridor_navigation::CorridorNavigationResultConstPtr& result)
+{
+    corridor_navigation_result_ = *result;
+}
+
 bool SymbolicNavigationROS::executeJunctionManeuvering(osm_planner_msgs::TopologicalAction topoglogical_action)
 {
     return false;
@@ -90,6 +95,23 @@ bool SymbolicNavigationROS::executeJunctionManeuvering(osm_planner_msgs::Topolog
 
 bool SymbolicNavigationROS::executeCorridorNavigation(osm_planner_msgs::TopologicalAction topoglogical_action)
 {
+    corridor_navigation::CorridorNavigationGoal corridor_navigation_request;
+    corridor_navigation_request.direction = topoglogical_action.goal_direction;
+    corridor_navigation_request.distance = topoglogical_action.goal_distance;
+
+    if(topoglogical_action.goal_type == "junction")
+        corridor_navigation_request.goal_type = 1;
+    else if(topoglogical_action.goal_type == "left_door")
+        corridor_navigation_request.goal_type = 2;
+    else if(topoglogical_action.goal_type == "right_door")
+        corridor_navigation_request.goal_type = 3; 
+
+    corridor_navigation_client_.sendGoal(corridor_navigation_request, boost::bind(&SymbolicNavigationROS::corridorNavigationResultCb, this, _1, _2));
+    bool finished_before_timeout = corridor_navigation_client_.waitForResult(ros::Duration(600.0));
+    if (corridor_navigation_client_.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+    {
+        return true;
+    }
     return false;
 } 
 
