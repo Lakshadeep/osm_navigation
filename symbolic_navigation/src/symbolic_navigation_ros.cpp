@@ -35,7 +35,7 @@ void SymbolicNavigationROS::SymbolicNavigationExecute(const symbolic_navigation:
         for(int i = 0; i < osm_topological_planner_result_.topological_actions.size(); i++)
         {
             std::string navigation_skill_type = osm_topological_planner_result_.topological_actions[i].navigation_skill_type;
-            ROS_DEBUG("Navigation skill type: %s", navigation_skill_type.c_str());
+            ROS_ERROR("Navigation skill type: %s", navigation_skill_type.c_str());
             if (navigation_skill_type == "hallway_navigation")
             {
                 executeCorridorNavigation(osm_topological_planner_result_.topological_actions[i]);
@@ -108,7 +108,10 @@ bool SymbolicNavigationROS::executeJunctionManeuvering(osm_planner_msgs::Topolog
 {
     junction_maneuvering::JunctionManeuveringGoal junction_maneuvering_request;
     junction_maneuvering_request.turn_direction = topoglogical_action.goal_direction;
-    junction_maneuvering_request.junction = 1; // currently topological planner makes no distinction between junction types 
+    if(topoglogical_action.goal_type == "T-junction")
+        junction_maneuvering_request.junction = 0;
+    else if(topoglogical_action.goal_type == "X-junction")
+        junction_maneuvering_request.junction = 1;
     junction_maneuvering_request.distance = topoglogical_action.goal_distance;
 
     junction_maneuvering_client_.sendGoal(junction_maneuvering_request, boost::bind(&SymbolicNavigationROS::junctionManeuveringResultCb, this, _1, _2));
@@ -123,10 +126,13 @@ bool SymbolicNavigationROS::executeJunctionManeuvering(osm_planner_msgs::Topolog
 bool SymbolicNavigationROS::executeCorridorNavigation(osm_planner_msgs::TopologicalAction topoglogical_action)
 {
     corridor_navigation::CorridorNavigationGoal corridor_navigation_request;
+    // corridor_navigation_request.direction = topoglogical_action.goal_direction; # resolve this with turn
     corridor_navigation_request.direction = topoglogical_action.goal_direction;
     corridor_navigation_request.distance = topoglogical_action.goal_distance;
 
-    if(topoglogical_action.goal_type == "junction")
+    if(topoglogical_action.goal_type == "T-junction")
+        corridor_navigation_request.goal_type = 0;
+    else if(topoglogical_action.goal_type == "X-junction")
         corridor_navigation_request.goal_type = 1;
     else if(topoglogical_action.goal_type == "left_door")
         corridor_navigation_request.goal_type = 2;

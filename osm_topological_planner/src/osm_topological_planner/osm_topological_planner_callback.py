@@ -207,8 +207,9 @@ class OSMTopologicalPlannerCallback(object):
                     topological_actions[
                         len(topological_actions) - 1].navigation_skill_type = 'junction_navigation'
                     pt = area.local_areas[0].topology
-                    topological_actions[
-                        len(topological_actions) - 1].goal_distance = self._compute_distance(pt, last_pt)
+                    # topological_actions[
+                    #     len(topological_actions) - 1].goal_distance = self._compute_distance(pt, last_pt)
+                    topological_actions[len(topological_actions) - 1].goal_distance = 0.5
                     last_pt = pt
                 # combining areas
                 elif last_area_type == area.type and area.type == "area":

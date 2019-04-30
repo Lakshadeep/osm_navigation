@@ -35,10 +35,20 @@ void CorridorNavigationROS::run()
     ROS_INFO("Corridor navigation action server started");
 }
 
+double CorridorNavigationROS::directionToAngle(int direction)
+{
+    if(direction == 1)
+        return 0.0;
+    else if (direction == 2)
+        return 1.57;
+    else if (direction == 0)
+        return -1.57;
+}
+
 void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation::CorridorNavigationGoalConstPtr& goal)
 {
-    reset();
-    corridor_navigation_.setGoal(goal->goal_type, goal->direction, goal->distance);
+    reset(); 
+    corridor_navigation_.setGoal(goal->goal_type, directionToAngle(goal->direction), goal->distance);
     ros::Rate r(controller_frequency_);
 
     std_msgs::Float32 desired_direction_msg;
