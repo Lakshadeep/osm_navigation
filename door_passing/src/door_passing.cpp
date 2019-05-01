@@ -14,7 +14,7 @@ bool DoorPassing::setGoal(int goal, double distance_inside,  Gateways detected_g
 {
     goal_ = goal;
     distance_inside_ = distance_inside;
-    if( goal_ == 0 && detected_gateways.left_door.range_x > 0)
+    if( goal_ == 2 && detected_gateways.left_door.range_x > 0)
     {
         turn_range_ = detected_gateways.left_door.range_x;
         turn_angle_ = detected_gateways.left_door.angle;
@@ -24,7 +24,7 @@ bool DoorPassing::setGoal(int goal, double distance_inside,  Gateways detected_g
         turn_range_ = detected_gateways.front_door.range_x;
         turn_angle_ = detected_gateways.front_door.angle;
     }
-    else if (goal_ == 2 && detected_gateways.right_door.range_x > 0)
+    else if (goal_ == 0 && detected_gateways.right_door.range_x > 0)
     {
         turn_range_ = detected_gateways.right_door.range_x;
         turn_angle_ = detected_gateways.right_door.angle;

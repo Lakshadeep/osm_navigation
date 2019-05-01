@@ -1,6 +1,6 @@
-# 0 : left
+# 2 : left
 # 1 : front
-# 2 : right
+# 0 : right
 
 int32 door
 float32 distance_inside

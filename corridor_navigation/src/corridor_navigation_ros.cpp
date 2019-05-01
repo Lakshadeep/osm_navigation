@@ -238,6 +238,18 @@ void CorridorNavigationROS::gatewayDetectionCallback(const gateway_msgs::Gateway
     detected_gateways_.x_junction.front_angle = msg->x_junction.front_angle;
     detected_gateways_.x_junction.front_range_x = msg->x_junction.front_range_x;
     detected_gateways_.x_junction.front_range_y = msg->x_junction.front_range_y;
+
+    detected_gateways_.left_door.angle = msg->left_door.angle; 
+    detected_gateways_.left_door.range_x = msg->left_door.range_x; 
+    detected_gateways_.left_door.range_y = msg->left_door.range_y; 
+
+    detected_gateways_.right_door.angle = msg->right_door.angle; 
+    detected_gateways_.right_door.range_x = msg->right_door.range_x;
+    detected_gateways_.right_door.range_y = msg->right_door.range_y;
+
+    detected_gateways_.front_door.angle = msg->front_door.angle; 
+    detected_gateways_.front_door.range_x = msg->front_door.range_x; 
+    detected_gateways_.front_door.range_y = msg->front_door.range_y; 
 }
 
 void CorridorNavigationROS::distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg)

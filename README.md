@@ -156,7 +156,7 @@ Performs heading based navigation w.r.t a certain reference feature
 
 #### Tests
 ```
-rosrun actionlib axclient.py  "/corridor_navigation_server" corridor_navigation_msgs/CorridorNavigationAction
+rosrun actionlib axclient.py  "/corridor_navigation_server" corridor_navigation/CorridorNavigationAction
 
 goal_id: 1
 direction: 0.0

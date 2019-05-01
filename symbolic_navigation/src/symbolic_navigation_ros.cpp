@@ -112,6 +112,7 @@ bool SymbolicNavigationROS::executeJunctionManeuvering(osm_planner_msgs::Topolog
         junction_maneuvering_request.junction = 0;
     else if(topoglogical_action.goal_type == "X-junction")
         junction_maneuvering_request.junction = 1;
+    
     junction_maneuvering_request.distance = topoglogical_action.goal_distance;
 
     junction_maneuvering_client_.sendGoal(junction_maneuvering_request, boost::bind(&SymbolicNavigationROS::junctionManeuveringResultCb, this, _1, _2));
