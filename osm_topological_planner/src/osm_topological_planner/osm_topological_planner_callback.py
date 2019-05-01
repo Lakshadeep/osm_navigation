@@ -193,7 +193,7 @@ class OSMTopologicalPlannerCallback(object):
                     topological_actions[
                         len(topological_actions) - 1].goal_id = area.id
                     topological_actions[
-                        len(topological_actions) - 1].goal_type = 'junction'
+                        len(topological_actions) - 1].goal_type = area.junction_type + '-junction'
                     pt = areas[i].local_areas[0].topology
                     topological_actions[len(topological_actions) - 1].goal_distance = topological_actions[
                         len(topological_actions) - 1].goal_distance + self._compute_distance(pt, last_pt)
@@ -207,8 +207,9 @@ class OSMTopologicalPlannerCallback(object):
                     topological_actions[
                         len(topological_actions) - 1].navigation_skill_type = 'junction_navigation'
                     pt = area.local_areas[0].topology
-                    topological_actions[
-                        len(topological_actions) - 1].goal_distance = self._compute_distance(pt, last_pt)
+                    # topological_actions[
+                    #     len(topological_actions) - 1].goal_distance = self._compute_distance(pt, last_pt)
+                    topological_actions[len(topological_actions) - 1].goal_distance = 0.5
                     last_pt = pt
                 # combining areas
                 elif last_area_type == area.type and area.type == "area":
@@ -238,6 +239,12 @@ class OSMTopologicalPlannerCallback(object):
                         door_orientation, last_orientation)
                     last_orientation = door_orientation
                     ta.goal_distance = 1  # hardcoded to 1 m for time being
+
+                    if ta.goal_direction == 2:
+                        topological_actions[len(topological_actions) - 1].goal_type = 'left_door'
+                    elif ta.goal_direction == 0:
+                        topological_actions[len(topological_actions) - 1].goal_type = 'right_door'
+
                     topological_actions.append(ta)
                     last_pt = areas[i - 1].exit_door.topology
 

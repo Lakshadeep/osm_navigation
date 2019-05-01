@@ -94,6 +94,7 @@ private:
     void ResetHeadingMonitor();
     void ResetDistanceMonitor();
     void reset();
+    double directionToAngle(int direction);
     void enableHeadingController();
     void disableHeadingController();
     void enableMotionController();

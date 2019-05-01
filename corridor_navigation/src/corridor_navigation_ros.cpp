@@ -35,10 +35,20 @@ void CorridorNavigationROS::run()
     ROS_INFO("Corridor navigation action server started");
 }
 
+double CorridorNavigationROS::directionToAngle(int direction)
+{
+    if(direction == 1)
+        return 0.0;
+    else if (direction == 2)
+        return 1.57;
+    else if (direction == 0)
+        return -1.57;
+}
+
 void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation::CorridorNavigationGoalConstPtr& goal)
 {
-    reset();
-    corridor_navigation_.setGoal(goal->goal_type, goal->direction, goal->distance);
+    reset(); 
+    corridor_navigation_.setGoal(goal->goal_type, directionToAngle(goal->direction), goal->distance);
     ros::Rate r(controller_frequency_);
 
     std_msgs::Float32 desired_direction_msg;
@@ -228,6 +238,18 @@ void CorridorNavigationROS::gatewayDetectionCallback(const gateway_msgs::Gateway
     detected_gateways_.x_junction.front_angle = msg->x_junction.front_angle;
     detected_gateways_.x_junction.front_range_x = msg->x_junction.front_range_x;
     detected_gateways_.x_junction.front_range_y = msg->x_junction.front_range_y;
+
+    detected_gateways_.left_door.angle = msg->left_door.angle; 
+    detected_gateways_.left_door.range_x = msg->left_door.range_x; 
+    detected_gateways_.left_door.range_y = msg->left_door.range_y; 
+
+    detected_gateways_.right_door.angle = msg->right_door.angle; 
+    detected_gateways_.right_door.range_x = msg->right_door.range_x;
+    detected_gateways_.right_door.range_y = msg->right_door.range_y;
+
+    detected_gateways_.front_door.angle = msg->front_door.angle; 
+    detected_gateways_.front_door.range_x = msg->front_door.range_x; 
+    detected_gateways_.front_door.range_y = msg->front_door.range_y; 
 }
 
 void CorridorNavigationROS::distanceMonitorCallback(const std_msgs::Float32::ConstPtr& msg)

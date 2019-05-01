@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<launch>
+    <node name="osm_topological_planner_node" pkg="osm_topological_planner" type="osm_topological_planner_node.py" output="screen">
+        <param name="overpass_server_ip" value="127.0.0.1" />
+        <param name="overpass_server_port" value="8000" />
+        <param name="ref_latitude" value="50.7800401" />  
+        <param name="ref_longitude" value="7.18226" /> 
+        <param name="building" value="BRSU" />
+    </node> 
+
+    <node name="corridor_navigation" pkg="corridor_navigation" type="corridor_navigation_node">
+        <param name="gateway_detection_topic" value="/gateways_detected" />
+        <param name="distance_monitor_topic" value="/monitored_distance" />
+        <param name="heading_monitor_topic" value="/monitored_heading" />
+        <param name="desired_heading_topic" value="/desired_heading" />
+        <param name="desired_velocity_topic" value="/desired_velocity" />
+
+        <param name="reset_distance_monitor_service" value="/reset_distance_monitor" />
+        <param name="reset_heading_monitor_service" value="/reset_heading_monitor" />
+        <param name="heading_control_switch_service" value="/heading_control_switch" />
+
+        <param name="recovery_direction_threshold" value="1.0" />
+        <param name="correction_direction_threshold" value="0.3" />
+
+        <param name="controller_frequency" value="20" />
+        <param name="velocity" value="0.5" />
+    </node>
+
+    <node name="area_navigation" pkg="area_navigation" type="area_navigation_node">
+        <param name="gateway_detection_topic" value="/gateways_detected" />
+        <param name="semantic_feature_detection_topic" value="/semantic_features_detected" />
+        <param name="distance_monitor_topic" value="/monitored_distance" />
+        <param name="heading_monitor_topic" value="/monitored_heading" />
+        <param name="desired_heading_topic" value="/desired_heading" />
+        <param name="desired_velocity_topic" value="/desired_velocity" />
+
+        <param name="reset_distance_monitor_service" value="/reset_distance_monitor" />
+        <param name="reset_heading_monitor_service" value="/reset_heading_monitor" />
+        <param name="heading_control_switch_service" value="/heading_control_switch" />
+
+        <param name="recovery_direction_threshold" value="1.0" />
+        <param name="correction_direction_threshold" value="0.3" />
+
+        <param name="controller_frequency" value="20" />
+        <param name="velocity" value="0.5" />
+    </node>
+
+    <node name="door_passing" pkg="door_passing" type="door_passing_node">
+        <param name="gateway_detection_topic" value="/gateways_detected" />
+        <param name="distance_monitor_topic" value="/monitored_distance" />
+        <param name="heading_monitor_topic" value="/monitored_heading" />
+        <param name="desired_heading_topic" value="/desired_heading" />
+        <param name="desired_velocity_topic" value="/desired_velocity" />
+
+        <param name="reset_distance_monitor_service" value="/reset_distance_monitor" />
+        <param name="reset_heading_monitor_service" value="/reset_heading_monitor" />
+        <param name="heading_control_switch_service" value="/heading_control_switch" />
+
+        <param name="controller_frequency" value="20" />
+        <param name="velocity" value="0.4" />
+        <param name="laser_robot_center_offset_x" value="0.3" />
+    </node>
+
+    <node name="junction_maneuvering" pkg="junction_maneuvering" type="junction_maneuvering_node">
+        <param name="gateway_detection_topic" value="/gateways_detected" />
+        <param name="distance_monitor_topic" value="/monitored_distance" />
+        <param name="heading_monitor_topic" value="/monitored_heading" />
+        <param name="desired_heading_topic" value="/desired_heading" />
+        <param name="desired_velocity_topic" value="/desired_velocity" />
+
+        <param name="reset_distance_monitor_service" value="/reset_distance_monitor" />
+        <param name="reset_heading_monitor_service" value="/reset_heading_monitor" />
+        <param name="heading_control_switch_service" value="/heading_control_switch" />
+
+        <param name="controller_frequency" value="20" />
+        <param name="velocity" value="0.4" />
+    </node>
+
+    <node name="symbolic_navigation_node" pkg="symbolic_navigation" type="symbolic_navigation_node">
+    </node> 
+</launch>

@@ -16,7 +16,7 @@ bool JunctionManeuvering::setGoal(int goal, int turn_direction, double distance,
     distance_ = distance;
     turn_direction_ = turn_direction;
 
-    if( goal_ == 0 && turn_direction == 0)
+    if( goal_ == 0 && turn_direction == 2)
     {
         turn_range_ = (0.75 * detected_gateways.t_junction.left_turn_range) - 0.75;
         turn_angle_ = detected_gateways.t_junction.left_turn_angle;
@@ -26,17 +26,17 @@ bool JunctionManeuvering::setGoal(int goal, int turn_direction, double distance,
         turn_range_ = (0.75 * detected_gateways.t_junction.front_range);
         turn_angle_ = detected_gateways.t_junction.front_angle;
     }
-    else if (goal_ == 0 && turn_direction == 2)
+    else if (goal_ == 0 && turn_direction == 0)
     {
         turn_range_ = (0.75 * detected_gateways.t_junction.right_turn_range) - 0.5;
         turn_angle_ = detected_gateways.t_junction.right_turn_angle;
     }
-    else if (goal_ == 1 && turn_direction == 0)
+    else if (goal_ == 1 && turn_direction == 2)
     {
         turn_range_ = (0.75 * detected_gateways.x_junction.left_turn_range)  - 0.75;
         turn_angle_ = detected_gateways.x_junction.left_turn_angle;
     }
-    else if (goal_ == 1 && turn_direction == 2)
+    else if (goal_ == 1 && turn_direction == 0)
     {
         turn_range_ = (0.75 * detected_gateways.x_junction.right_turn_range) - 0.5;
         turn_angle_ = detected_gateways.x_junction.right_turn_angle;

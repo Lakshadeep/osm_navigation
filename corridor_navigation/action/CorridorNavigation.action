@@ -1,4 +1,4 @@
-float32 direction
+int32 direction
 float32 distance
 
 # 0 : T-junction
