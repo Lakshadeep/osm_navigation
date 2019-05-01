@@ -38,19 +38,23 @@ void SymbolicNavigationROS::SymbolicNavigationExecute(const symbolic_navigation:
             ROS_ERROR("Navigation skill type: %s", navigation_skill_type.c_str());
             if (navigation_skill_type == "hallway_navigation")
             {
-                executeCorridorNavigation(osm_topological_planner_result_.topological_actions[i]);
+                if(!executeCorridorNavigation(osm_topological_planner_result_.topological_actions[i]))
+                    ROS_ERROR("Corridor navigation failed");
             }
             else if (navigation_skill_type == "junction_navigation")
             {
-                executeJunctionManeuvering(osm_topological_planner_result_.topological_actions[i]);
+                if(!executeJunctionManeuvering(osm_topological_planner_result_.topological_actions[i]))
+                    ROS_ERROR("Junction maneuvering failed");
             }
             else if (navigation_skill_type == "area_navigation")
             {
-                executeAreaNavigation(osm_topological_planner_result_.topological_actions[i]);
+                if(!executeAreaNavigation(osm_topological_planner_result_.topological_actions[i]))
+                    ROS_ERROR("Area navigation failed");
             }
             else if (navigation_skill_type == "door_navigation")
             {
-                executeDoorPassing(osm_topological_planner_result_.topological_actions[i]);
+                if(!executeDoorPassing(osm_topological_planner_result_.topological_actions[i]))
+                    ROS_ERROR("Door passing failed");
             }
         }
     }

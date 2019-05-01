@@ -57,15 +57,27 @@ void DoorPassingROS::doorPassingExecute(const door_passing::DoorPassingGoalConst
 
     // set goal received to action server
     // this goal is then updated when robot is infront of the door
-    if(!door_passing_.setGoal(goal->door, goal->distance_inside, detected_gateways_))
+    int retry_count = 0; 
+    while(nh_.ok())
     {
-        // we abort the action if door is not detected!
-        disableHeadingController();
-        disableMotionController();
-        door_passing_.reset();
-        ROS_DEBUG_NAMED("door_passing", "Aborting the current goal");
-        door_passing_server_.setAborted();
-        return;   
+        if(!door_passing_.setGoal(goal->door, goal->distance_inside, detected_gateways_))
+        {
+            if (retry_count > 100)
+            {
+                // we abort the action if door is not detected!
+                disableHeadingController();
+                disableMotionController();
+                door_passing_.reset();
+                ROS_DEBUG_NAMED("door_passing", "Aborting the current goal");
+                door_passing_server_.setAborted();
+                return; 
+            }
+            retry_count++; 
+        }
+        else
+            break;
+
+        r.sleep();
     }
 
     while(nh_.ok())
