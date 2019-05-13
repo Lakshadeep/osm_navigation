@@ -2,7 +2,7 @@
 
 CorridorNavigationROS::CorridorNavigationROS(ros::NodeHandle& nh): nh_(nh), corridor_navigation_server_(nh,"/corridor_navigation_server",
   boost::bind(&CorridorNavigationROS::CorridorNavigationExecute, this, _1),false), monitored_heading_(0), monitored_distance_(0),
-  recovery_enabled_(false)
+  recovery_enabled_(false), goal_detect_count_(0)
 {
     loadParameters(); 
     
@@ -116,9 +116,15 @@ void CorridorNavigationROS::CorridorNavigationExecute(const corridor_navigation:
             desired_heading_publisher_.publish(desired_direction_msg);
             
             feedback.desired_direction = desired_direction;
-            corridor_navigation_server_.publishFeedback(feedback);   
+            corridor_navigation_server_.publishFeedback(feedback); 
 
+            // wait until we are sure goal is correctly detected
             if (corridor_navigation_.isGoalReached(detected_gateways_, monitored_distance_, monitored_heading_))
+            {
+                goal_detect_count_ = goal_detect_count_ + 1;
+            }  
+
+            if (goal_detect_count_ > 3)
             {
                 reset();
                 disableHeadingController();
@@ -386,4 +392,5 @@ void CorridorNavigationROS::reset()
 {
     corridor_navigation_.reset();
     resetMonitors();
+    goal_detect_count_ = 0;
 }

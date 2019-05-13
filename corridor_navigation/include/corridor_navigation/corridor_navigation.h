@@ -33,7 +33,7 @@ private:
     double desired_direction_;
     double desired_distance_;
     // 0 : T-junction | 1 : X-junction | 2 : left door | 3 : right door
-    int goal_type_; 
+    int goal_type_;
 
 
 

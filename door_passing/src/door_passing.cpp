@@ -130,10 +130,14 @@ bool DoorPassing::computePassingOrientation(Gateways detected_gateways)
 {
     if( detected_gateways.front_door.range_x > 0)
     {
-        passing_orientation_ = atan2(detected_gateways.front_door.range_y, detected_gateways.front_door.range_x);
-        return true;
+        double new_passing_orientation_ = atan2(detected_gateways.front_door.range_y, detected_gateways.front_door.range_x);
+        // update angle only if its within intiial range
+        if (fabs(passing_orientation_ - new_passing_orientation_) < 0.3)
+        {
+            passing_orientation_ = new_passing_orientation_;
+            return true;
+        }
     }
-
     return false;
 }
 

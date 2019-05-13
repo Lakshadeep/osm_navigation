@@ -86,6 +86,8 @@ private:
     double monitored_distance_;
     double monitored_heading_;
 
+    int goal_detect_count_; 
+
     // action server callbacks
     void CorridorNavigationExecute(const corridor_navigation::CorridorNavigationGoalConstPtr& goal);
 

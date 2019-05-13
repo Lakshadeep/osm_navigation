@@ -37,10 +37,31 @@ void AreaNavigationROS::run()
 void AreaNavigationROS::AreaNavigationExecute(const area_navigation::AreaNavigationGoalConstPtr& goal)
 {
     reset();
-    if(area_navigation_.setGoal(goal->goal_type, navigation_signs_))
-    {
-        ros::Rate r(controller_frequency_);
 
+    // set goal received to action server
+    // this goal is then updated when robot is infront of the door
+    int retry_count = 0; 
+    bool is_goal_set = false;
+    ros::Rate r(controller_frequency_);
+
+    while(nh_.ok())
+    {
+        if(area_navigation_.setGoal(goal->goal_type, navigation_signs_) && retry_count < 100)
+        {
+            is_goal_set = true;
+            break;
+        }
+        else
+            retry_count++;
+
+        if (retry_count > 100)
+            break;
+
+        r.sleep();
+    }
+
+    if(is_goal_set)
+    {
         std_msgs::Float32 desired_direction_msg;
         std_msgs::Float32 desired_velocity_msg;
         area_navigation::AreaNavigationFeedback feedback;
@@ -129,6 +150,7 @@ void AreaNavigationROS::AreaNavigationExecute(const area_navigation::AreaNavigat
 
                         area_navigation_server_.setSucceeded(area_navigation::AreaNavigationResult(), "Goal reached");
                         return;
+
                     }
                 }
                 desired_heading_publisher_.publish(desired_direction_msg);

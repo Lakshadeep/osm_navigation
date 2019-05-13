@@ -163,12 +163,12 @@ class OSMTopologicalPlannerCallback(object):
                     ta = TopologicalAction()
                     ta.area_ids.append(area.id)
                     ta.type = area.type
+                    ta.goal_type = 0
                     if area.exit_door:
                         ta.goal_id = area.exit_door.id
                         ta.goal_type = 'door'
                     else:
                         ta.goal_id = -1
-                        ta.goal_type = ''
                     ta.goal_direction = 1
                     ta.navigation_skill_type = "area_navigation"
                     topological_actions.append(ta)
