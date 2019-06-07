@@ -358,7 +358,7 @@ void SemanticLocalization::odomReceived(const nav_msgs::OdometryConstPtr& odom_m
 
     updated_odom_pose_.v[2] = yaw;
 
-    ROS_DEBUG("$GroundTruth:%.3f,%3f,%3f",updated_odom_pose_.v[0] + 60, updated_odom_pose_.v[1] + 25, updated_odom_pose_.v[2]);
+    ROS_INFO("$GroundTruth:%.3f,%3f,%3f",updated_odom_pose_.v[0] + 60, updated_odom_pose_.v[1] + 25, updated_odom_pose_.v[2]);
 }
 
 void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::SemanticMap& semantic_map)
@@ -398,6 +398,8 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
         odata.pose = pose;
         odata.delta = delta;
 
+        ROS_INFO("$DetectedWallSidesCount:%d\n", semantic_map.wall_sides.size());
+
         for (int i = 0; i < semantic_map.wall_sides.size(); i++)
         {
             point_t pt;
@@ -419,6 +421,7 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
         }
         wsdata.sensor = wall_sides_;
 
+        ROS_INFO("$DetectedPilarsCount:%d\n", semantic_map.pillars.size());
         for (int i = 0; i < semantic_map.pillars.size(); i++)
         {
             point_t pt;
@@ -468,7 +471,7 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
 
             /////////////////////////////////////////////////////////////////////
 
-            ROS_DEBUG("$HypothesisCount:%d\n", pf_->sets[pf_->current_set].cluster_count);
+            ROS_INFO("$HypothesisCount:%d\n", pf_->sets[pf_->current_set].cluster_count);
 
             double max_weight = 0.0;
             int max_weight_hyp = -1;
@@ -503,7 +506,7 @@ void SemanticLocalization::semanticFeaturesReceived(const osm_map_msgs::Semantic
 
             if (max_weight > 0.0)
             {
-                ROS_DEBUG("$MaxWeightPose:%d,%.3f,%.3f,%.3f", max_weight_hyp, hyps[max_weight_hyp].pf_pose_mean.v[0],
+                ROS_INFO("$MaxWeightPose:%d,%.3f,%.3f,%.3f", max_weight_hyp, hyps[max_weight_hyp].pf_pose_mean.v[0],
                           hyps[max_weight_hyp].pf_pose_mean.v[1], hyps[max_weight_hyp].pf_pose_mean.v[2]);
 
                 geometry_msgs::PoseWithCovarianceStamped p;

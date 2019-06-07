@@ -113,7 +113,7 @@ bool AreaNavigation::isStateChanged(double monitored_distance, double monitored_
         state_ = 0;
         return true;
     }
-    else if(state_ == 0 && fabs(monitored_distance - desired_distance_) < 1.0) // distance should be greater then clearance radius
+    else if(state_ == 0 && fabs(monitored_distance - desired_distance_) < 0.5) // distance should be greater then clearance radius
     {
         state_ = 1;
         return true;

@@ -1,0 +1,5 @@
+<launch>
+    <include file="$(find semantic_localization)/launch/semantic_localization_diff.launch" />
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find semantic_localization)/test/semantic_localization_test_HBRS_C022.rviz"/>
+    <node type="ground_truth_publisher.py" name="ground_truth_publisher" pkg="semantic_localization"/>
+</launch>

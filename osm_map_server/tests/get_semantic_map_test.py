@@ -8,6 +8,7 @@ from osm_map_msgs.msg import *
 from osm_map_msgs.srv import *
 from actionlib import SimpleActionClient
 
+
 class GetSemanticMapClient(object):
 
     def __init__(self):
@@ -16,8 +17,9 @@ class GetSemanticMapClient(object):
         rospy.loginfo("Semantic map server service available")
 
         self.client = rospy.ServiceProxy(SERVER, GetSemanticMap)
-        
-        res = self.client(area_refs=['BRSU_C_L0_RoomC022', 'BRSU_C_L0_C9'], level=0, is_elevator=False)
+
+        res = self.client(
+            area_refs=['BRSU_C_L0_RoomC022'], level=0, is_elevator=False)
         # res = self.client(area_refs=['BRSU_A_E1'], is_elevator=True)
 
         try:
