@@ -1,0 +1,4 @@
+<launch>
+    <include file="$(find symbolic_navigation)/launch/symbolic_navigation.launch" />
+    <node type="ground_truth_publisher.py" name="ground_truth_publisher" pkg="semantic_localization" output="screen"/>
+</launch>

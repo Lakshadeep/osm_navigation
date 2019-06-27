@@ -112,7 +112,7 @@ destination_task: ''
 
 ```
 
-## Semantic Localization
+## Monte Carlo localization using semantic features 
 Implements MCL using semantic features modelled in OSM world model. Assumes that robot position is known at area level and then use semantic features obtained from semantic map of an area for localization.
 
 #### Subscribed topics
@@ -175,6 +175,7 @@ Performs pure topological door entering without any robot localization estimate
 #### Published topics
 * desired heading
 * desirred velocity 
+* motion controller mode
 
 #### Required services
 * heading control switch
@@ -191,7 +192,7 @@ Performs pure topological door entering without any robot localization estimate
 ```
 rosrun actionlib axclient.py  "/door_passing_server" door_passing/DoorPassingAction
 
-door: 0/1/2    (left/front/right)
+door: 0/1/2    (front/right/left)
 distance_inside: 0.0
 ```
 
@@ -205,7 +206,7 @@ Performs right, left or straight turn at the junction (X/T junctions)
 
 #### Published topics
 * desired heading
-* desirred velocity 
+* desirred velocity
 
 #### Required services
 * heading control switch
@@ -223,7 +224,7 @@ Performs right, left or straight turn at the junction (X/T junctions)
 rosrun actionlib axclient.py  "/junction_maneuvering_server" junction_maneuvering/JunctionManeuveringAction
 
 junction: 0/1    (t/x-junction)
-turn_direction: 0/1/2    (left/front/right)
+turn_direction: 0/1/2    (right/front/left)
 distance: 0.0
 ```
 

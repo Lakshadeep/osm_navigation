@@ -35,24 +35,28 @@ void SymbolicNavigationROS::SymbolicNavigationExecute(const symbolic_navigation:
         for(int i = 0; i < osm_topological_planner_result_.topological_actions.size(); i++)
         {
             std::string navigation_skill_type = osm_topological_planner_result_.topological_actions[i].navigation_skill_type;
-            ROS_ERROR("Navigation skill type: %s", navigation_skill_type.c_str());
+            // ROS_ERROR("Navigation skill type: %s", navigation_skill_type.c_str());
             if (navigation_skill_type == "hallway_navigation")
             {
+                ROS_INFO("$NAVTYPE:Hallway");
                 if(!executeCorridorNavigation(osm_topological_planner_result_.topological_actions[i]))
                     ROS_ERROR("Corridor navigation failed");
             }
             else if (navigation_skill_type == "junction_navigation")
             {
+                ROS_INFO("$NAVTYPE:Junction");
                 if(!executeJunctionManeuvering(osm_topological_planner_result_.topological_actions[i]))
                     ROS_ERROR("Junction maneuvering failed");
             }
             else if (navigation_skill_type == "area_navigation")
             {
+                ROS_INFO("$NAVTYPE:Area");
                 if(!executeAreaNavigation(osm_topological_planner_result_.topological_actions[i]))
                     ROS_ERROR("Area navigation failed");
             }
             else if (navigation_skill_type == "door_navigation")
             {
+                ROS_INFO("$NAVTYPE:Door");
                 if(!executeDoorPassing(osm_topological_planner_result_.topological_actions[i]))
                     ROS_ERROR("Door passing failed");
             }
@@ -157,7 +161,8 @@ bool SymbolicNavigationROS::executeDoorPassing(osm_planner_msgs::TopologicalActi
 {
     door_passing::DoorPassingGoal door_passing_request;
     door_passing_request.door = topoglogical_action.goal_direction;
-    door_passing_request.distance_inside = topoglogical_action.goal_distance;
+    // door_passing_request.distance_inside = topoglogical_action.goal_distance;
+    door_passing_request.distance_inside = 1.0;
 
     door_passing_client_.sendGoal(door_passing_request, boost::bind(&SymbolicNavigationROS::doorPassingResultCb, this, _1, _2));
     bool finished_before_timeout = door_passing_client_.waitForResult(ros::Duration(600.0));

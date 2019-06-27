@@ -12,7 +12,7 @@
     <param name="heading_control_switch_service" value="/heading_control_switch" />
 
     <param name="controller_frequency" value="20" />
-    <param name="velocity" value="0.4" />
+    <param name="velocity" value="0.2" />
   </node>
 </launch>
 
